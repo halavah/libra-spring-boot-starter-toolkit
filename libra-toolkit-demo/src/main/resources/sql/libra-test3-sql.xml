@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<sqls>
+    <!-- ==================== DDL and DML for Test Setup ==================== -->
+    <sql id="createUsersTable">
+        CREATE TABLE ${tableName} (
+            id INT PRIMARY KEY,
+            name VARCHAR(100),
+            email VARCHAR(100),
+            status VARCHAR(20),
+            is_active BOOLEAN DEFAULT TRUE
+        )
+    </sql>
+
+    <sql id="insertUser">
+        INSERT INTO ${tableName} (id, name, email, status) VALUES (#{id}, #{name}, #{email}, #{status})
+    </sql>
+
+    <sql id="dropUsersTable">
+        DROP TABLE IF EXISTS ${tableName}
+    </sql>
+
+    <!-- ==================== Find Queries ==================== -->
+
+    <!-- 简单的SQL查询 -->
+    <sql id="findUserById_simple">
+        SELECT id, name, email FROM ${tableName} WHERE id = #{userId}
+    </sql>
+
+    <!-- 带有 <if> 标签的动态SQL -->
+    <sql id="findUserWithStatus_simple_dynamic">
+        SELECT id, name, email, status FROM ${tableName}
+        WHERE 1=1
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </sql>
+
+    <!-- 混合占位符和动态标签的SQL -->
+    <sql id="findProductInTable_simple_dynamic">
+        SELECT * FROM ${tableName}
+        WHERE 1=1
+        <if test="productId != null">
+            AND product_id = #{productId}
+        </if>
+    </sql>
+
+    <!-- 嵌套 <if> 标签 -->
+    <sql id="findUserWithNestedIf">
+        SELECT * FROM ${tableName}
+        WHERE 1=1
+        <if test="status != null">
+            AND status = #{status}
+            <if test="name != null">
+                AND name LIKE #{name}
+            </if>
+        </if>
+    </sql>
+
+    <!-- 带引号的 test 属性 -->
+    <sql id="findUserWithQuotedTest">
+        SELECT * FROM ${tableName}
+        WHERE 1=1
+        <if test='status == "active"'>
+            AND is_active = 1
+        </if>
+    </sql>
+
+    <!-- 复杂条件 -->
+    <sql id="findUserWithComplexCondition">
+        SELECT * FROM ${tableName}
+        WHERE 1=1
+        <if test="name != null and name != ''">
+            AND name = #{name}
+        </if>
+    </sql>
+
+    <!-- ==================== DDL and DML for Product Table ==================== -->
+    <sql id="createProductsTable">
+        CREATE TABLE ${tableName} (
+            product_id INT PRIMARY KEY,
+            product_name VARCHAR(100),
+            price DECIMAL(10, 2)
+        )
+    </sql>
+
+    <sql id="insertProduct">
+        INSERT INTO ${tableName} (product_id, product_name, price) VALUES (#{productId}, #{productName}, #{price})
+    </sql>
+
+    <sql id="dropProductsTable">
+        DROP TABLE IF EXISTS ${tableName}
+    </sql>
+
+</sqls>

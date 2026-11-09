@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.TestMapper">
+    <!--libra_order_main-->
+    <select id="queryOrderMainList" resultType="java.util.Map">
+        SELECT * FROM libra_order_main;
+    </select>
+
+    <!--libra_order_main 分页查询-->
+    <select id="queryOrderMainListPage" resultType="java.util.Map">
+        SELECT * FROM libra_order_main
+    </select>
+</mapper>

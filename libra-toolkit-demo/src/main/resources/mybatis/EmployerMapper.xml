@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.EmployerMapper">
+
+    <!-- 根据ID查询雇主 -->
+    <select id="findEmployerById" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Employer">
+        SELECT id, name, industry FROM employers WHERE id = #{value}
+    </select>
+
+    <!-- 查询所有雇主 -->
+    <select id="findAllEmployers" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Employer">
+        SELECT id, name, industry FROM employers ORDER BY name
+    </select>
+
+    <!-- 新增雇主 -->
+    <insert id="insertEmployer">
+        INSERT INTO employers (id, name, industry) VALUES (#{id}, #{name}, #{industry})
+    </insert>
+
+    <!-- 更新雇主信息 -->
+    <update id="updateEmployer">
+        UPDATE employers
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="industry != null">industry = #{industry},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除雇主 -->
+    <delete id="deleteEmployerById">
+        DELETE FROM employers WHERE id = #{value}
+    </delete>
+
+</mapper>

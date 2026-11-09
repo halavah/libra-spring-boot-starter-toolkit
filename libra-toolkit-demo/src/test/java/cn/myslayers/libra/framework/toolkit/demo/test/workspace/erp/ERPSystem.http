@@ -1,0 +1,38 @@
+### 1. 员工入职 (正常流程)
+POST http://localhost:8083/api/erp/employees/onboard
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "deptId": 101,
+  "baseSalary": 15000.00
+}
+
+### 2. 员工入职 (正常流程 2)
+POST http://localhost:8083/api/erp/employees/onboard
+Content-Type: application/json
+
+{
+  "name": "Jane Smith",
+  "deptId": 102,
+  "baseSalary": 12000.00
+}
+
+### 3. 员工入职 (事务回滚演示) - 名字叫 ERROR_TEST 会触发回滚
+POST http://localhost:8083/api/erp/employees/onboard
+Content-Type: application/json
+
+{
+  "name": "ERROR_TEST",
+  "deptId": 103,
+  "baseSalary": 20000.00
+}
+
+### 4. 查看员工列表 (验证 ERROR_TEST 是否没入库)
+GET http://localhost:8083/api/erp/employees
+
+### 5. 批量计算 2023-11 月薪资
+POST http://localhost:8083/api/erp/salaries/calculate?month=2023-11
+
+### 6. 查看部门薪资统计报表
+GET http://localhost:8083/api/erp/reports/salary-by-dept

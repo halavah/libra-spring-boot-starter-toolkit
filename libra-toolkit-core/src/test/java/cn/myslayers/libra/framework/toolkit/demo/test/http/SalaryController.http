@@ -1,0 +1,35 @@
+### 获取所有用户信息
+GET http://localhost:5176/salary/users
+
+### 根据empNo获取单个用户信息
+GET http://localhost:5176/salary/user?empNo=J001
+
+### 创建新用户
+POST http://localhost:5176/salary/user
+Content-Type: application/json
+
+{
+  "empNo": "J003",
+  "name": "Charlie",
+  "salary": 9500.0
+}
+
+### 更新用户信息
+PUT http://localhost:5176/salary/user
+Content-Type: application/json
+
+{
+  "empNo": "J002",
+  "name": "Bob",
+  "salary": 16500.0
+}
+
+### 删除用户
+DELETE http://localhost:5176/salary/user?empNo=J001
+
+### 测试用户未找到的情况
+GET http://localhost:5176/salary/user?empNo=J999
+
+### 测试删除不存在的用户
+DELETE http://localhost:5176/salary/user?empNo=J999
+

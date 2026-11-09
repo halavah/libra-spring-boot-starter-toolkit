@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 综合测试SQL配置文件 - 整合所有测试功能 -->
+<sqls>
+    <!-- ================ 基础功能测试 ================ -->
+
+    <!-- 基础查询列表 -->
+    <sql id="selectBasicList" desc="基础查询列表测试">
+        SELECT 'basic_test' as name,
+        'test_value' as value,
+        CURRENT_TIMESTAMP as test_time,
+        'success' as status
+        UNION ALL
+        SELECT 'basic_test2' as name,
+        'test_value2' as value,
+        CURRENT_TIMESTAMP as test_time,
+        'success' as status
+    </sql>
+
+    <!-- 基础查询单条 -->
+    <sql id="selectBasicOne" desc="基础单条查询测试">
+        SELECT 'single_test' as name, #{id} as id, 'basic_single' as type
+    </sql>
+
+    <!-- ================ 动态SQL和条件测试 ================ -->
+
+    <!-- 条件查询 -->
+    <sql id="selectWithCondition" desc="带条件的查询测试">
+        SELECT 'condition_test' as name, #{minAge} as min_age, #{maxAge} as max_age, 95.5 as score
+        <if test="minAge != null and maxAge != null">
+        WHERE #{minAge} &lt;= #{maxAge}
+        </if>
+    </sql>
+
+    <!-- 数字类型查询 -->
+    <sql id="selectWithNumbers" desc="数字类型查询测试">
+        SELECT 'number_test' as name, #{minAge} as min_age, #{maxAge} as max_age, 95.5 as score
+        <if test="minAge != null and maxAge != null">
+        WHERE #{minAge} &lt;= #{maxAge}
+        </if>
+    </sql>
+
+    <!-- 参数测试查询 -->
+    <sql id="selectWithParams" desc="参数替换测试">
+        SELECT #{name} as name, #{age} as age, #{email} as email, #{description} as description
+    </sql>
+
+    <!-- ================ CRUD操作测试 ================ -->
+
+    <!-- 删除测试表 -->
+    <sql id="dropTestTable" desc="删除测试表">
+        DROP TABLE IF EXISTS ${tableName}
+    </sql>
+
+    <!-- 创建测试表 -->
+    <sql id="createTestTable" desc="创建测试表">
+        CREATE TABLE IF NOT EXISTS ${tableName} (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100),
+        age INT,
+        created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    </sql>
+
+    <!-- 插入用户 -->
+    <sql id="insertUser" desc="插入用户数据">
+        INSERT INTO ${tableName} (name, email, age)
+        VALUES (#{name}, #{email}, #{age})
+    </sql>
+
+    <!-- 查询所有用户 -->
+    <sql id="selectUsers" desc="查询所有用户">
+        SELECT * FROM ${tableName} ORDER BY id
+    </sql>
+
+    <!-- 按ID查询用户 -->
+    <sql id="selectUserById" desc="按ID查询用户">
+        SELECT * FROM ${tableName} WHERE id = #{id}
+    </sql>
+
+    <!-- 更新用户 -->
+    <sql id="updateUser" desc="更新用户信息">
+        UPDATE ${tableName}
+        SET name = #{name}, email = #{email}
+        WHERE id = #{id}
+    </sql>
+
+    <!-- 删除用户 -->
+    <sql id="deleteUser" desc="删除用户">
+        DELETE FROM ${tableName} WHERE id = #{id}
+    </sql>
+
+    <!-- ================ 高级功能测试 ================ -->
+
+    <!-- 基础查询（用于advanced-test-sql） -->
+    <sql id="selectBasicQuery" desc="基础查询操作">
+        SELECT 'basic_query' as name,
+        DATABASE() as current_db,
+        CURRENT_TIMESTAMP as query_time
+    </sql>
+
+    <!-- 复杂条件查询 -->
+    <sql id="selectWithNestedConditions" desc="复杂嵌套条件查询">
+        SELECT 'nested_condition_test' as name,
+        #{userType} as user_type,
+        #{hasDiscount} as has_discount,
+        #{region} as region
+        FROM DUAL
+        WHERE 1=1
+        <if test="userType != null and userType != ''">
+        AND #{userType} = 'VIP'
+            <if test="hasDiscount != null and hasDiscount == 'true'">
+            AND #{hasDiscount} = 'true'
+                <if test="region != null and region != ''">
+                AND #{region} = 'West'
+                </if>
+            </if>
+        </if>
+    </sql>
+
+    <!-- ================ 批量操作测试 ================ -->
+
+    <!-- 创建批量测试表 -->
+    <sql id="createBatchTable" desc="创建批量测试表">
+        CREATE TABLE IF NOT EXISTS ${tableName} (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100),
+        batch_id VARCHAR(50),
+        created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    </sql>
+
+    <!-- 单个插入用户 -->
+    <sql id="insertBatchUser" desc="单个插入批量用户">
+        INSERT INTO ${tableName} (name, email, age)
+        VALUES (#{name}, #{email}, #{age})
+    </sql>
+
+    <!-- 批量插入用户 -->
+    <sql id="batchInsert" desc="批量插入用户">
+        INSERT INTO ${tableName} (name, email, batch_id)
+        VALUES (#{name}, #{email}, #{batch_id})
+    </sql>
+
+    <!-- 批量查询用户 -->
+    <sql id="batchSelect" desc="批量查询用户">
+        SELECT * FROM ${tableName} WHERE batch_id LIKE CONCAT(#{batchPrefix}, '%')
+    </sql>
+
+    <!-- 批量更新用户 -->
+    <sql id="batchUpdate" desc="批量更新用户">
+        UPDATE ${tableName}
+        SET name = #{newName}
+        WHERE batch_id LIKE CONCAT(#{batchPrefix}, '%')
+    </sql>
+
+    <!-- 查询批量用户 -->
+    <sql id="selectBatchUsers" desc="查询批量用户统计">
+        SELECT 'batch_users' as name,
+        DATABASE() as current_db,
+        #{batchId} as batch_identifier
+    </sql>
+
+    <!-- 清理批量测试表 -->
+    <sql id="dropBatchTable" desc="清理批量测试表">
+        DROP TABLE IF EXISTS ${tableName}
+    </sql>
+
+    <!-- ================ 事务测试 ================ -->
+
+    <!-- 创建事务测试表 -->
+    <sql id="createTransactionTable" desc="创建事务测试表">
+        CREATE TABLE IF NOT EXISTS ${tableName} (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100),
+        age INT,
+        transaction_id INT,
+        created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    </sql>
+
+    <!-- 插入事务用户 -->
+    <sql id="insertTransactionUser" desc="插入事务用户">
+        INSERT INTO ${tableName} (name, email, age, transaction_id)
+        VALUES (#{name}, #{email}, #{age}, #{transactionId})
+    </sql>
+
+    <!-- 查询事务用户 -->
+    <sql id="selectTransactionUsers" desc="查询事务用户">
+        SELECT 'transaction_test' as name,
+        '${tableName}' as table_name,
+        CURRENT_TIMESTAMP as query_time
+    </sql>
+
+    <!-- 清理事务测试表 -->
+    <sql id="dropTransactionTable" desc="清理事务测试表">
+        DROP TABLE IF EXISTS ${tableName}
+    </sql>
+
+    <!-- ================ 边界条件测试 ================ -->
+
+    <!-- 空参数测试 -->
+    <sql id="queryWithEmptyParams" desc="空参数测试">
+        SELECT 'empty_param_test' as name,
+        'no_params' as type,
+        CURRENT_TIMESTAMP as test_time
+    </sql>
+
+    <!-- NULL值参数测试 -->
+    <sql id="queryWithNullParams" desc="NULL值参数测试">
+        SELECT 'null_param_test' as name,
+        COALESCE(#{nullParam}, 'default_value') as param_value,
+        CURRENT_TIMESTAMP as test_time
+    </sql>
+
+    <!-- 长字符串测试 -->
+    <sql id="queryWithLongString" desc="长字符串测试">
+        SELECT 'long_string_test' as name,
+        LENGTH(#{longString}) as string_length,
+        CURRENT_TIMESTAMP as test_time
+    </sql>
+
+    <!-- 特殊字符测试 -->
+    <sql id="queryWithSpecialChars" desc="特殊字符测试">
+        SELECT 'special_chars_test' as name,
+        #{specialChars} as special_value,
+        CURRENT_TIMESTAMP as test_time
+    </sql>
+
+    <!-- ================ 性能测试 ================ -->
+
+    <!-- 快速查询 -->
+    <sql id="fastQuery" desc="快速查询性能测试">
+        SELECT 'fast_query' as name,
+        #{id} as query_id,
+        #{region} as region_name
+    </sql>
+
+    <!-- 复杂查询 -->
+    <sql id="complexQuery" desc="复杂查询性能测试">
+        SELECT 'complex_query' as name,
+        #{id} as query_id,
+        #{region} as region_name,
+        CURRENT_TIMESTAMP as query_time
+    </sql>
+
+    <!-- ================ 多数据源测试 ================ -->
+
+    <!-- 默认数据源查询 -->
+    <sql id="selectFromDefault" desc="默认数据源查询">
+        SELECT 'default_db_query' as name,
+        DATABASE() as current_db,
+        CURRENT_TIMESTAMP as query_time
+    </sql>
+
+    <!-- 数据源信息查询 -->
+    <sql id="selectWithDbInfo" desc="数据源信息查询">
+        SELECT 'db_info_query' as name,
+        #{currentDb} as current_db,
+        DATABASE() as actual_db,
+        CURRENT_TIMESTAMP as query_time
+    </sql>
+
+    <!-- ================ 并发测试 ================ -->
+
+    <!-- 并发查询 -->
+    <sql id="concurrentQuery" desc="并发查询测试">
+        SELECT 'concurrent_test' as name,
+        #{threadId} as thread_id,
+        #{queryId} as query_id,
+        CURRENT_TIMESTAMP as test_timestamp
+    </sql>
+
+    <!-- 并发插入 -->
+    <sql id="concurrentInsert" desc="并发插入测试">
+        SELECT 'concurrent_insert' as name,
+        #{threadId} as thread_id,
+        #{operationType} as operation_type,
+        CURRENT_TIMESTAMP as insert_time
+    </sql>
+
+    <!-- 并发安全查询 -->
+    <sql id="concurrentSafeQuery" desc="并发安全查询测试">
+        SELECT 'safe_query' as name,
+        #{threadId} as thread_id,
+        #{queryId} as query_id,
+        CONNECTION_ID() as connection_id
+    </sql>
+
+    <!-- ================ 高级参数测试 ================ -->
+
+    <!-- 复杂类型测试 -->
+    <sql id="queryWithComplexTypes" desc="复杂类型测试">
+        SELECT 'complex_types_test' as name,
+        #{boolParam} as bool_value,
+        #{numberParam} as number_value,
+        #{stringParam} as string_value
+    </sql>
+
+    <!-- 表达式测试 -->
+    <sql id="queryWithExpressions" desc="表达式测试">
+        SELECT 'expression_test' as name,
+        #{score1} as score1,
+        #{score2} as score2,
+        #{threshold} as threshold,
+        #{operator} as operator
+    </sql>
+
+    <!-- 嵌套参数测试 -->
+    <sql id="queryWithNestedParams" desc="嵌套参数测试">
+        SELECT 'nested_params_test' as name,
+        #{searchType} as search_type,
+        #{includeInactive} as include_inactive,
+        CURRENT_TIMESTAMP as query_time
+    </sql>
+
+    <!-- ================ 错误处理测试 ================ -->
+
+    <!-- 无效SQL测试 -->
+    <sql id="selectInvalidSql" desc="无效SQL测试">
+        INVALID SQL SYNTAX FOR TESTING
+    </sql>
+
+</sqls>

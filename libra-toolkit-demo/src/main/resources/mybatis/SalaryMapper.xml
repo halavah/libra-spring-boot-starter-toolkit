@@ -1,0 +1,519 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.SalaryMapper">
+    <!-- 根据薪资ID查询详细信息 -->
+    <select id="selectSalaryById" parameterType="java.lang.Long" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Salary">
+        SELECT s.salary_id     as id,
+               s.employee_id   as employeeId,
+               s.salary_period as period,
+               s.base_salary   as baseSalary,
+               s.overtime_pay  as overtime,
+               s.bonus         as performanceBonus,
+               s.allowance,
+               s.deduction,
+               s.total_amount  as totalAmount,
+               s.tax_amount    as taxAmount,
+               s.net_salary    as netSalary,
+               s.pay_date      as payDate,
+               s.status,
+               s.created_time  as createdTime,
+               s.updated_time  as updatedTime,
+               s.commission,
+               s.social_insurance
+        FROM salary s
+        WHERE s.salary_id = #{salaryId}
+    </select>
+
+    <!-- 查询员工薪资历史记录 -->
+    <select id="selectSalaryHistory" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.SalaryCalculateDTO" resultType="cn.myslayers.libra.framework.toolkit.demo.model.vo.SalaryReportVO">
+        SELECT
+        s.salary_id,
+        s.employee_id,
+        s.salary_period,
+        s.base_salary,
+        s.overtime_pay,
+        s.bonus,
+        s.deduction,
+        s.net_salary,
+        s.pay_date,
+        s.status,
+        e.employee_name,
+        e.employee_no,
+        d.department_name
+        FROM salary s
+        LEFT JOIN employee e ON s.employee_id = e.employee_id
+        LEFT JOIN department d ON e.department_id = d.department_id
+        WHERE s.employee_id = #{employeeId}
+        <if test="startDate != null">
+            AND s.pay_date >= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND s.pay_date &lt;= #{endDate}
+        </if>
+        <if test="status != null and status != ''">
+            AND s.status = #{status}
+        </if>
+        ORDER BY s.pay_date DESC
+    </select>
+
+    <!-- 薪资列表查询（支持多条件过滤） -->
+    <select id="selectSalaryList" resultType="map">
+        SELECT
+        s.salary_id,
+        s.employee_id,
+        e.employee_name,
+        e.employee_no,
+        d.department_name,
+        s.base_salary,
+        s.bonus,
+        s.net_salary,
+        s.pay_date,
+        s.pay_period_start,
+        s.pay_period_end,
+        s.status
+        FROM salary s
+        LEFT JOIN employee e ON s.employee_id = e.employee_id
+        LEFT JOIN department d ON e.department_id = d.department_id
+        <where>
+            <if test="employeeId != null">
+                AND s.employee_id = #{employeeId}
+            </if>
+            <if test="employeeName != null and employeeName != ''">
+                AND e.employee_name LIKE CONCAT('%', #{employeeName}, '%')
+            </if>
+            <if test="departmentId != null">
+                AND e.department_id = #{departmentId}
+            </if>
+            <if test="payDateStart != null">
+                AND s.pay_date >= #{payDateStart}
+            </if>
+            <if test="payDateEnd != null">
+                AND s.pay_date &lt;= #{payDateEnd}
+            </if>
+            <if test="status != null and status != ''">
+                AND s.status = #{status}
+            </if>
+            <if test="minSalary != null">
+                AND s.net_salary >= #{minSalary}
+            </if>
+            <if test="maxSalary != null">
+                AND s.net_salary &lt;= #{maxSalary}
+            </if>
+        </where>
+        ORDER BY s.pay_date DESC, s.employee_id ASC
+    </select>
+
+    <!-- 创建薪资记录 -->
+    <insert id="insertSalary" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Salary" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO salary (employee_id,
+                            salary_period,
+                            base_salary,
+                            bonus,
+                            allowance,
+                            deduction,
+                            overtime_pay,
+                            total_amount,
+                            tax_amount,
+                            net_salary,
+                            pay_date,
+                            status,
+                            remarks,
+                            created_time,
+                            updated_time,
+                            commission,
+                            social_insurance, pay_period_start, pay_period_end)
+        VALUES (#{employeeId},
+                #{period},
+                #{baseSalary},
+                #{performanceBonus},
+                #{allowance},
+                #{deduction},
+                #{overtime},
+                #{totalAmount},
+                #{taxAmount},
+                #{netSalary},
+                #{payDate},
+                COALESCE(#{status}, 'DRAFT'),
+                #{remarks},
+                NOW(),
+                NOW(),
+                #{commission},
+                #{socialInsurance},
+                #{payPeriodStart}, #{payPeriodEnd})
+    </insert>
+
+    <!-- 批量创建薪资记录 -->
+    <insert id="batchInsertSalary">
+        INSERT INTO salary (
+        employee_id, base_salary, bonus, allowance, deduction,
+        overtime_pay, commission, social_insurance, tax_amount, net_salary,
+        pay_date, pay_period_start, pay_period_end, status, remarks,
+        created_time, updated_time
+        ) VALUES
+        <foreach item="salary" collection="salaries" separator=",">
+            (
+            #{salary.employeeId},
+            #{salary.baseSalary},
+            #{salary.bonus},
+            #{salary.allowance},
+            #{salary.deduction},
+            #{salary.overtimePay},
+            #{salary.commission},
+            #{salary.socialInsurance},
+            #{salary.taxAmount},
+            #{salary.netSalary},
+            #{salary.payDate},
+            #{salary.payPeriodStart},
+            #{salary.payPeriodEnd},
+            #{salary.status},
+            #{salary.remarks},
+            NOW(),
+            NOW()
+            )
+        </foreach>
+    </insert>
+
+    <!-- 更新薪资信息 -->
+    <update id="updateSalary">
+        UPDATE salary
+        <set>
+            <if test="baseSalary != null">
+                base_salary = #{baseSalary},
+            </if>
+            <if test="bonus != null">
+                bonus = #{bonus},
+            </if>
+            <if test="allowance != null">
+                allowance = #{allowance},
+            </if>
+            <if test="deduction != null">
+                deduction = #{deduction},
+            </if>
+            <if test="overtimePay != null">
+                overtime_pay = #{overtimePay},
+            </if>
+            <if test="commission != null">
+                commission = #{commission},
+            </if>
+            <if test="socialInsurance != null">
+                social_insurance = #{socialInsurance},
+            </if>
+            <if test="taxAmount != null">
+                tax_amount = #{taxAmount},
+            </if>
+            <if test="netSalary != null">
+                net_salary = #{netSalary},
+            </if>
+            <if test="payDate != null">
+                pay_date = #{payDate},
+            </if>
+            <if test="status != null and status != ''">
+                status = #{status},
+            </if>
+            <if test="remarks != null">
+                remarks = #{remarks},
+            </if>
+            updated_time = NOW()
+        </set>
+        WHERE salary_id = #{salaryId}
+    </update>
+
+    <!-- 删除薪资记录 -->
+    <delete id="deleteSalary">
+        DELETE
+        FROM salary
+        WHERE salary_id = #{salaryId}
+    </delete>
+
+    <!-- 批量删除薪资记录 -->
+    <delete id="deleteSalariesByIds">
+        DELETE FROM salary WHERE salary_id IN
+        <foreach item="id" collection="salaryIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 薪资统计分析 -->
+    <select id="getSalaryStatistics" resultType="map">
+        SELECT
+        COUNT(*) as total_records,
+        SUM(s.net_salary) as total_salary,
+        AVG(s.net_salary) as avg_salary,
+        MAX(s.net_salary) as max_salary,
+        MIN(s.net_salary) as min_salary,
+        SUM(s.base_salary) as total_base_salary,
+        SUM(s.bonus) as total_bonus,
+        SUM(s.allowance) as total_allowance,
+        SUM(s.deduction) as total_deduction,
+        SUM(s.overtime_pay) as total_overtime_pay,
+        SUM(s.commission) as total_commission,
+        SUM(s.tax_amount) as total_tax,
+        COUNT(DISTINCT s.employee_id) as employee_count
+        FROM salary s
+        <where>
+            <if test="departmentId != null">
+                AND EXISTS (
+                SELECT 1 FROM employee e
+                WHERE e.employee_id = s.employee_id
+                AND e.department_id = #{departmentId}
+                )
+            </if>
+            <if test="payDateStart != null">
+                AND s.pay_date >= #{payDateStart}
+            </if>
+            <if test="payDateEnd != null">
+                AND s.pay_date &lt;= #{payDateEnd}
+            </if>
+            <if test="status != null and status != ''">
+                AND s.status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <!-- 部门薪资对比分析 -->
+    <select id="getDepartmentSalaryComparison" resultType="map">
+        SELECT
+        d.department_id,
+        d.department_name,
+        COUNT(DISTINCT s.employee_id) as employee_count,
+        COUNT(s.salary_id) as salary_records,
+        SUM(s.net_salary) as total_salary,
+        AVG(s.net_salary) as avg_salary,
+        MAX(s.net_salary) as max_salary,
+        MIN(s.net_salary) as min_salary,
+        SUM(s.bonus) as total_bonus,
+        AVG(s.bonus) as avg_bonus,
+        SUM(s.overtime_pay) as total_overtime_pay
+        FROM salary s
+        JOIN employee e ON s.employee_id = e.employee_id
+        JOIN department d ON e.department_id = d.department_id
+        <where>
+            <if test="payDateStart != null">
+                AND s.pay_date >= #{payDateStart}
+            </if>
+            <if test="payDateEnd != null">
+                AND s.pay_date &lt;= #{payDateEnd}
+            </if>
+            <if test="status != null and status != ''">
+                AND s.status = #{status}
+            </if>
+        </where>
+        GROUP BY d.department_id, d.department_name
+        ORDER BY avg_salary DESC
+    </select>
+
+    <!-- 薪资趋势分析（按月统计） -->
+    <select id="getSalaryTrendByMonth" resultType="map">
+        SELECT
+        YEAR(s.pay_date) as year,
+        MONTH(s.pay_date) as month,
+        DATE_FORMAT(s.pay_date, '%Y-%m') as year_month,
+        COUNT(*) as record_count,
+        COUNT(DISTINCT s.employee_id) as employee_count,
+        SUM(s.net_salary) as total_salary,
+        AVG(s.net_salary) as avg_salary,
+        SUM(s.base_salary) as total_base_salary,
+        SUM(s.bonus) as total_bonus,
+        SUM(s.overtime_pay) as total_overtime_pay
+        FROM salary s
+        <where>
+            <if test="startYear != null">
+                AND YEAR(s.pay_date) >= #{startYear}
+            </if>
+            <if test="endYear != null">
+                AND YEAR(s.pay_date) &lt;= #{endYear}
+            </if>
+            <if test="departmentId != null">
+                AND EXISTS (
+                SELECT 1 FROM employee e
+                WHERE e.employee_id = s.employee_id
+                AND e.department_id = #{departmentId}
+                )
+            </if>
+            <if test="status != null and status != ''">
+                AND s.status = #{status}
+            </if>
+        </where>
+        GROUP BY YEAR(s.pay_date), MONTH(s.pay_date)
+        ORDER BY year DESC, month DESC
+    </select>
+
+    <!-- 员工薪资排名 -->
+    <select id="getEmployeeSalaryRanking" resultType="map">
+        SELECT
+        e.employee_id,
+        e.employee_name,
+        e.employee_no,
+        d.department_name,
+        e.position,
+        AVG(s.net_salary) as avg_salary,
+        MAX(s.net_salary) as max_salary,
+        MIN(s.net_salary) as min_salary,
+        SUM(s.bonus) as total_bonus,
+        COUNT(s.salary_id) as pay_periods,
+        RANK() OVER (ORDER BY AVG(s.net_salary) DESC) as salary_rank,
+        DENSE_RANK() OVER (PARTITION BY d.department_id ORDER BY AVG(s.net_salary) DESC) as dept_rank
+        FROM salary s
+        JOIN employee e ON s.employee_id = e.employee_id
+        JOIN department d ON e.department_id = d.department_id
+        <where>
+            <if test="payDateStart != null">
+                AND s.pay_date >= #{payDateStart}
+            </if>
+            <if test="payDateEnd != null">
+                AND s.pay_date &lt;= #{payDateEnd}
+            </if>
+            <if test="departmentId != null">
+                AND e.department_id = #{departmentId}
+            </if>
+            <if test="status != null and status != ''">
+                AND s.status = #{status}
+            </if>
+        </where>
+        GROUP BY e.employee_id, e.employee_name, e.employee_no, d.department_name, e.position
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 薪资异常检测 -->
+    <select id="detectSalaryAnomalies" resultType="map">
+        SELECT
+        s.salary_id,
+        s.employee_id,
+        e.employee_name,
+        d.department_name,
+        s.net_salary,
+        s.pay_date,
+        dept_avg.avg_salary as dept_avg_salary,
+        ABS(s.net_salary - dept_avg.avg_salary) as deviation,
+        CASE
+        WHEN s.net_salary > dept_avg.avg_salary * 1.5 THEN 'HIGH_ANOMALY'
+        WHEN s.net_salary &lt; dept_avg.avg_salary * 0.5 THEN 'LOW_ANOMALY'
+        WHEN s.net_salary > dept_avg.avg_salary * 1.2 THEN 'HIGH_WARNING'
+        WHEN s.net_salary &lt; dept_avg.avg_salary * 0.8 THEN 'LOW_WARNING'
+        ELSE 'NORMAL'
+        END as anomaly_type,
+        ROUND((s.net_salary / dept_avg.avg_salary - 1) * 100, 2) as deviation_percentage
+        FROM salary s
+        JOIN employee e ON s.employee_id = e.employee_id
+        JOIN department d ON e.department_id = d.department_id
+        JOIN (
+        SELECT
+        e2.department_id,
+        AVG(s2.net_salary) as avg_salary
+        FROM salary s2
+        JOIN employee e2 ON s2.employee_id = e2.employee_id
+        <where>
+            <if test="payDateStart != null">
+                AND s2.pay_date >= #{payDateStart}
+            </if>
+            <if test="payDateEnd != null">
+                AND s2.pay_date &lt;= #{payDateEnd}
+            </if>
+            <if test="status != null and status != ''">
+                AND s2.status = #{status}
+            </if>
+        </where>
+        GROUP BY e2.department_id
+        ) dept_avg ON e.department_id = dept_avg.department_id
+        <where>
+            <if test="payDateStart != null">
+                AND s.pay_date >= #{payDateStart}
+            </if>
+            <if test="payDateEnd != null">
+                AND s.pay_date &lt;= #{payDateEnd}
+            </if>
+            <if test="status != null and status != ''">
+                AND s.status = #{status}
+            </if>
+            <if test="anomalyType != null and anomalyType != ''">
+                <choose>
+                    <when test="anomalyType == 'HIGH_ANOMALY'">
+                        AND s.net_salary > dept_avg.avg_salary * 1.5
+                    </when>
+                    <when test="anomalyType == 'LOW_ANOMALY'">
+                        AND s.net_salary &lt; dept_avg.avg_salary * 0.5
+                    </when>
+                    <when test="anomalyType == 'HIGH_WARNING'">
+                        AND s.net_salary > dept_avg.avg_salary * 1.2 AND s.net_salary &lt;= dept_avg.avg_salary * 1.5
+                    </when>
+                    <when test="anomalyType == 'LOW_WARNING'">
+                        AND s.net_salary &lt; dept_avg.avg_salary * 0.8 AND s.net_salary >= dept_avg.avg_salary * 0.5
+                    </when>
+                </choose>
+            </if>
+        </where>
+        ORDER BY ABS(s.net_salary - dept_avg.avg_salary) DESC
+    </select>
+
+    <!-- 薪资成本预算分析 -->
+    <select id="getSalaryCostBudgetAnalysis" resultType="map">
+        SELECT
+        d.department_id,
+        d.department_name,
+        d.budget as dept_budget,
+        COALESCE(salary_data.total_salary_cost, 0) as actual_salary_cost,
+        COALESCE(salary_data.employee_count, 0) as employee_count,
+        COALESCE(salary_data.avg_salary, 0) as avg_salary,
+        (d.budget - COALESCE(salary_data.total_salary_cost, 0)) as budget_remaining,
+        CASE
+        WHEN d.budget > 0 THEN ROUND((COALESCE(salary_data.total_salary_cost, 0) / d.budget) * 100, 2)
+        ELSE 0
+        END as budget_usage_percentage,
+        CASE
+        WHEN COALESCE(salary_data.total_salary_cost, 0) > d.budget THEN 'OVER_BUDGET'
+        WHEN COALESCE(salary_data.total_salary_cost, 0) > d.budget * 0.9 THEN 'WARNING'
+        WHEN COALESCE(salary_data.total_salary_cost, 0) > d.budget * 0.8 THEN 'CAUTION'
+        ELSE 'NORMAL'
+        END as budget_status
+        FROM department d
+        LEFT JOIN (
+        SELECT
+        e.department_id,
+        SUM(s.net_salary) as total_salary_cost,
+        COUNT(DISTINCT s.employee_id) as employee_count,
+        AVG(s.net_salary) as avg_salary
+        FROM salary s
+        JOIN employee e ON s.employee_id = e.employee_id
+        <where>
+            <if test="payDateStart != null">
+                AND s.pay_date >= #{payDateStart}
+            </if>
+            <if test="payDateEnd != null">
+                AND s.pay_date &lt;= #{payDateEnd}
+            </if>
+            <if test="status != null and status != ''">
+                AND s.status = #{status}
+            </if>
+        </where>
+        GROUP BY e.department_id
+        ) salary_data ON d.department_id = salary_data.department_id
+        <where>
+            <if test="departmentId != null">
+                AND d.department_id = #{departmentId}
+            </if>
+            <if test="budgetStatus != null and budgetStatus != ''">
+                <choose>
+                    <when test="budgetStatus == 'OVER_BUDGET'">
+                        AND COALESCE(salary_data.total_salary_cost, 0) > d.budget
+                    </when>
+                    <when test="budgetStatus == 'WARNING'">
+                        AND COALESCE(salary_data.total_salary_cost, 0) > d.budget * 0.9
+                        AND COALESCE(salary_data.total_salary_cost, 0) &lt;= d.budget
+                    </when>
+                    <when test="budgetStatus == 'CAUTION'">
+                        AND COALESCE(salary_data.total_salary_cost, 0) > d.budget * 0.8
+                        AND COALESCE(salary_data.total_salary_cost, 0) &lt;= d.budget * 0.9
+                    </when>
+                    <when test="budgetStatus == 'NORMAL'">
+                        AND COALESCE(salary_data.total_salary_cost, 0) &lt;= d.budget * 0.8
+                    </when>
+                </choose>
+            </if>
+        </where>
+        ORDER BY budget_usage_percentage DESC
+    </select>
+</mapper>
+

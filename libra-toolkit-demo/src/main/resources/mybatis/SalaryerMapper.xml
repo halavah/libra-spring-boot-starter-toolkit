@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.SalaryerMapper">
+
+    <!-- 根据ID查询薪资记录 -->
+    <select id="findSalaryById" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Salaryer">
+        SELECT id, user_id, amount, pay_date FROM salaries WHERE id = #{value}
+    </select>
+
+    <!-- 根据用户ID查询薪资记录 -->
+    <select id="findSalariesByUserId" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Salaryer">
+        SELECT id, user_id, amount, pay_date FROM salaries WHERE user_id = #{userId} ORDER BY pay_date DESC
+    </select>
+
+    <!-- 新增薪资记录 -->
+    <insert id="insertSalary">
+        INSERT INTO salaries (id, user_id, amount, pay_date) VALUES (#{id}, #{userId}, #{amount}, #{payDate})
+    </insert>
+
+    <!-- 更新薪资记录 -->
+    <update id="updateSalary">
+        UPDATE salaries
+        <set>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="payDate != null">pay_date = #{payDate},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除薪资记录 -->
+    <delete id="deleteSalaryById">
+        DELETE FROM salaries WHERE id = #{value}
+    </delete>
+
+</mapper>

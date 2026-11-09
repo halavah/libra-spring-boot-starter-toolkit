@@ -1,0 +1,9 @@
+### 获取所有雇主列表
+GET http://localhost:5176/employer/list
+
+### 根据ID获取单个雇主信息
+GET http://localhost:5176/employer/detail?id=C01
+
+### 测试雇主未找到的情况
+GET http://localhost:5176/employer/detail?id=C99
+

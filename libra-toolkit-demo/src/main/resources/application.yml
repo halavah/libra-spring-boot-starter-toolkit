@@ -1,0 +1,308 @@
+# ===============================================================
+# 服务器相关配置 (Server Configuration)
+# ===============================================================
+server:
+  # 设置内嵌Web服务器（如Tomcat）的监听端口
+  port: 20105
+  servlet:
+    # 设置应用的上下文路径（Context Path）
+    context-path: /libra-toolkit-demo/toolkit
+    encoding:
+      # 设置HTTP请求和响应的默认字符编码
+      charset: UTF-8
+      # 启用编码支持
+      enabled: true
+      # 强制对所有请求和响应使用配置的字符编码
+      force: true
+
+# ===============================================================
+# Spring Boot 核心配置 (Spring Core Configuration)
+# ===============================================================
+spring:
+  # 应用的名称，会显示在注册中心、日志等地方
+  application:
+    name: libra-toolkit-demo
+  # Spring MVC 相关配置
+  mvc:
+    pathmatch:
+      # 设置URL路径匹配策略。ant_path_matcher是Spring的传统策略，支持 `*`, `**`, `?` 等通配符。
+      matching-strategy: ant_path_matcher
+
+  # ===============================================================
+  # Jackson JSON 序列化/反序列化配置 (Jackson JSON Serialization/Deserialization Configuration)
+  # ===============================================================
+  jackson:
+    # 全局设置日期类型（如 Date, LocalDateTime）序列化为JSON字符串时的格式
+    date-format: yyyy-MM-dd HH:mm:ss
+    # 设置时区，保证日期时间处理的一致性，GMT+8是中国标准时间
+    time-zone: GMT+8
+    serialization:
+      # 设置为false，表示将日期序列化为字符串格式（如 "2025-08-20 20:20:20"），而不是时间戳（如 1755778820000）
+      write-dates-as-timestamps: false
+      # 设置为false，当遇到空的Java对象时不抛出异常，允许序列化空对象（如只有getter没有属性的对象）
+      fail-on-empty-beans: false
+    deserialization:
+      # 设置为false，表示当JSON字符串中包含Java对象没有的属性时，不抛出异常，而是直接忽略
+      fail-on-unknown-properties: false
+      # 支持BigDecimal（已有，正确）- 设置为true时，JSON中的浮点数将被反序列化为BigDecimal而不是Double，提供更高的精度
+      use-big-decimal-for-floats: true
+      # 设置为true，允许将单个值作为数组处理。例如：JSON中 "items": "single" 可以反序列化到 List<String> items
+      accept-single-value-as-array: true
+      # 设置为true，将空字符串("")视为null对象，防止空字符串导致的反序列化异常
+      accept-empty-string-as-null-object: true
+    # 解析器配置，提高容错性
+    parser:
+      # 设置为true，允许JSON字符串中包含注释（// 或 /* */），提高配置文件的可读性
+      allow-comments: true
+      # 设置为true，允许JSON字符串使用单引号包围字段名和字符串值，而不仅仅是双引号
+      allow-single-quotes: true
+      # 设置为true，允许JSON字段名不使用引号包围（如 {name: "value"} 而不是 {"name": "value"}）
+      allow-unquoted-field-names: true
+    # 全局属性包含策略 - NON_NULL表示序列化时忽略值为null的字段，减少JSON体积
+    default-property-inclusion: NON_NULL
+    # 映射器级别配置，用于控制Jackson ObjectMapper的行为
+    mapper:
+      # 设置为true，启用大小写不敏感的属性映射。JSON中的 "UserName" 可以映射到 Java 的 "username" 字段
+      accept-case-insensitive-properties: true
+
+  # ===============================================================
+  # p6spy配置 (p6spy Configuration)
+  # ===============================================================
+  p6spy:
+    # 启用日志记录
+    enable-logging: true
+    # 多行模式
+    multiline: true
+    # 使用SLF4J日志记录器
+    logging: slf4j
+    # 日志格式
+    log-format: |-
+      time:%(executionTime)ms || sql:%(sql)
+
+  # ===============================================================
+  # 数据源配置 (Datasource Configuration)
+  # ===============================================================
+  datasource:
+    # ---------------------------------------------------------------
+    # Druid 连接池通用配置 (Applies to all datasources below)
+    # ---------------------------------------------------------------
+    druid:
+      # 建议配置为true，防止MySQL等数据库8小时无交互自动断开连接的问题
+      keepAlive: true
+      # 初始化时建立物理连接的个数
+      initial-size: 5
+      # 连接池中保持的最小空闲连接数
+      min-idle: 5
+      # 连接池中允许的最大活动连接数
+      maxActive: 20
+      # 获取连接时最大等待时间，单位毫秒。如果超过该时间仍未获取到连接，则抛出异常
+      maxWait: 60000
+      # 检测并关闭空闲连接的时间间隔，单位毫秒
+      timeBetweenEvictionRunsMillis: 60000
+      # 每隔多久将监控数据记录到日志中，单位毫秒。设置为0表示关闭
+      timeBetweenLogStatsMillis: 60000
+      # 连接在池中保持空闲而不被驱逐的最长时间，单位毫秒
+      maxEvictableIdleTimeMillis: 360000
+      # 连接在池中最小生存的时间，单位毫秒。只有空闲时间超过该值的连接才可能被驱逐
+      minEvictableIdleTimeMillis: 300000
+      # 用来检测连接是否有效的SQL查询。DUAL是Oracle和MySQL中的虚拟表
+      validationQuery: SELECT 'x' FROM DUAL
+      # 建议配置为true，表示在连接空闲时检测其有效性，不影响性能
+      testWhileIdle: true
+      # 获取连接时是否检测其有效性。设置为false可提高性能
+      testOnBorrow: false
+      # 归还连接时是否检测其有效性。设置为false可提高性能
+      testOnReturn: false
+      # 是否打印被丢弃的连接的日志
+      logAbandoned: true
+      # 是否移除长时间未关闭的连接（超时连接）
+      removeAbandoned: true
+      # 超时时间，单位秒。当一个连接超过这个时间未使用，则被认为是超时连接并被回收
+      removeAbandonedTimeout: 1800
+      # 是否开启 PreparedStatement 缓存（PSCache）
+      # Oracle下建议开启，MySQL下由于驱动自身有优化，建议关闭
+      poolPreparedStatements: false
+      # PreparedStatement 缓存的大小
+      maxPoolPreparedStatementPerConnectionSize: -1
+      # 配置Druid的过滤器，用于监控、日志、防火墙等功能。
+      # stat: 性能统计, log4j2: 日志记录, wall: SQL防火墙
+      filters: stat,log4j2
+      # 连接属性配置
+      # druid.stat.mergeSql=true: 合并相似的SQL，方便统计
+      # druid.stat.slowSqlMillis=5000: 记录执行时间超过5秒的SQL为慢SQL
+      connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
+      # 配置Druid的Web监控过滤器（DruidStatFilter）
+      web-stat-filter:
+        # 启用Web监控
+        enabled: true
+        # 拦截所有URL请求
+        url-pattern: "/*"
+        # 指定不进行统计的静态资源URL
+        exclusions: "*.js,*.gif,*.jpg,*.bmp,*.png,*.css,*.ico,/druid/*"
+
+    # ---------------------------------------------------------------
+    # 动态数据源配置 (Dynamic Datasource - The REAL configuration)
+    # ---------------------------------------------------------------
+    dynamic:
+      # 设置主数据源（默认数据源）。当代码中未指定使用哪个数据源时，会自动使用名为 'master' 的数据源
+      primary: master
+      # 严格模式。设置为true时，如果程序中指定了一个不存在的数据源，会立即报错
+      strict: true
+      # 是否启用 p6spy 来监控和分析SQL。p6spy是一个SQL日志工具，可以详细记录SQL执行情况
+      p6spy: true
+      # 定义所有的数据源
+      datasource:
+        # --- 数据源1 ---
+        master: # 数据源的逻辑名称
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://localhost:3306/libra-toolkit-demo?characterEncoding=UTF-8&useUnicode=true&useSSL=false&tinyInt1isBit=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+          username: demo_user
+          password: demo_password
+
+# ===============================================================
+# MyBatis-Plus ORM 框架配置
+# ===============================================================
+mybatis-plus:
+  # 指定 Mapper XML 文件的位置。classpath: 表示从类路径下查找
+  mapper-locations: classpath:/mybatis/*Mapper.xml
+  # 实体类（Entity）所在的包路径。配置后可在 Mapper XML 中直接使用类名作为别名
+  type-aliases-package: cn.myslayers.libra.framework.toolkit.demo.model.entity
+  # 枚举类所在的包路径。MyBatis-Plus 会自动扫描并处理这些枚举类型与数据库字段的映射
+  type-enums-package: cn.myslayers.libra.framework.toolkit.demo.model.enums
+  # 自定义 TypeHandler 所在包。MyBatis-Plus 启动时会扫描此包下所有继承 BaseTypeHandler，并标注 @MappedJdbcTypes 的类，自动注册到全局配置，用于复杂类型（如 JSON 与对象）映射
+  type-handlers-package: cn.myslayers.libra.framework.toolkit.demo.model.handler
+  # 全局策略配置
+  global-config:
+    # ---------- 数据库相关配置 ----------
+    db-config:
+      # 主键生成策略：
+      # AUTO(0): 数据库自增
+      # INPUT(1): 用户输入
+      # ASSIGN_ID(2): 雪花算法
+      # ASSIGN_UUID(3): UUID 字符串
+      id-type: ASSIGN_UUID
+      # 字段插入和更新策略：
+      # IGNORED(0): 忽略判断
+      # NOT_NULL(1): 只对非 NULL 字段操作
+      # NOT_EMPTY(2): 只对非空（非 NULL 且非空串/空集合）字段操作
+      field-strategy: 2
+      # ❌ 已废弃：3.4.x版本后不再生效，功能已迁移至 configuration.map-underscore-to-camel-case
+      # 原因：为了与 MyBatis 原生配置保持一致，避免配置重复和混乱
+      # db-column-underline: true
+      # ❌ 已废弃：3.4.x版本后功能已内置，无需手动配置
+      # 原因：MyBatis-Plus 会自动监听 XML 文件变化，该配置项已无实际作用
+      # refresh-mapper: true
+      # ❌ 已废弃：3.4.x版本后配置方式发生变化
+      # 原因：该配置项在新版本中被重新设计，改为更细粒度的控制
+      # capital-mode: true
+      # 逻辑删除功能配置：
+      # 实体类属性名，对应数据库逻辑删除字段
+      logic-delete-field: deletedFlag
+      # 逻辑删除时字段值
+      logic-delete-value: 1
+      # 未删除时字段值
+      logic-not-delete-value: 0
+    # ---------- 自动填充策略（MetaObjectHandler） ----------
+    # 注册实现了 MetaObjectHandler 接口的 Bean 名称或类，可在插入/更新时自动填充字段
+    # meta-object-handler: cn.myslayers.product.office.config.MyMetaObjectHandler
+  # MyBatis 原生配置
+  configuration:
+    # 开启驼峰命名自动映射（替代已废弃的 db-column-underline）
+    map-underscore-to-camel-case: true
+    # 是否开启 MyBatis 二级缓存（默认关闭）
+    cache-enabled: false
+    # 查询结果为 NULL 时，是否调用实体 setter（可触发默认值）
+    call-setters-on-nulls: true
+    # 指定 MyBatis 使用的日志实现
+    # 注释掉 StdOutImpl，避免与 P6Spy 重复打印 SQL
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 使用 SLF4J，与 Log4j2 集成，通过 logger 级别控制 SQL 输出
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+    # 一级缓存作用域（SESSION 或 STATEMENT）
+    # local-cache-scope: STATEMENT
+    # 默认枚举类型处理器（修正为3.4.3.4版本正确路径）
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+
+#===========日志配置==================
+logging:
+  level:
+    druid.sql: DEBUG                          # Druid SQL 监控日志级别
+    org.mybatis: DEBUG                        # MyBatis 日志级别
+    cn.myslayers.libra.framework.toolkit.demo: DEBUG          # 应用核心日志级别
+    cn.myslayers.libra.framework.toolkit.demo.mapper: DEBUG   # Mapper 接口日志级别
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n" # 控制台日志格式
+    file:    "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n" # 文件日志格式
+
+# ===============================================================
+# Libra 框架层配置 (Libra Framework Configuration)
+# ===============================================================
+libra:
+  # ===============================================================
+  # 框架层 Web 配置扩展点 (Framework Web Configuration)
+  # ===============================================================
+  web:
+    # ---------------------------------------------------------------
+    # CORS 跨域配置 (Cross-Origin Resource Sharing Configuration)
+    # ---------------------------------------------------------------
+    cors:
+      enabled: true                                # ✅ 启用 CORS 配置（默认 true）
+      allowed-origin-patterns:                     # 允许的源地址模式列表
+        - "*"                                      # 开发环境允许所有源
+      allowed-methods:                             # 允许的 HTTP 方法列表
+        - "*"                                      # 允许所有方法
+      allowed-headers:                             # 允许的请求头列表
+        - "*"                                      # 允许所有请求头
+      exposed-headers:                             # 暴露给前端的响应头
+        - "file-name"                              # 自定义文件名响应头
+        - "Content-Disposition"                    # 标准文件下载响应头
+        - "X-Custom-Header"                        # 可以添加其他自定义响应头
+      allow-credentials: true                      # 允许携带凭证（Cookie）
+      max-age: 3600                                # 预检请求缓存时间（秒）
+      path-patterns:                               # CORS 配置应用的路径模式
+        - "/**"                                    # 对所有路径生效
+
+    # ---------------------------------------------------------------
+    # 日期格式化配置 (Date Format Configuration)
+    # ---------------------------------------------------------------
+    date-format:
+      enabled: true                                # ✅ 启用日期格式化配置（默认 true）
+      time-zone: GMT+8                             # 时区设置（东八区）
+      patterns:                                    # 字段名匹配模式
+        date-only:                                 # 仅日期模式
+          - "birthDate"                            # 精确匹配：出生日期
+          - "dischargeDate"                        # 精确匹配：离职日期
+          - "availableDate"                        # 精确匹配：可用日期
+          - "fillDate"                             # 精确匹配：填写日期
+          - "*Date"                                # 通配符：以 Date 结尾
+          - "*Birth*"                              # 通配符：包含 Birth
+          - "expire*"                              # 通配符：以 expire 开头
+        date-time:                                 # 日期时间模式
+          - "createTime"                           # 精确匹配：创建时间
+          - "updateTime"                           # 精确匹配：更新时间
+          - "*Time"                                # 通配符：以 Time 结尾
+          - "*DateTime"                            # 通配符：以 DateTime 结尾
+      formats:                                     # 格式映射
+        date-only: "yyyy-MM-dd"                    # 仅日期格式
+        date-time: "yyyy-MM-dd HH:mm:ss"           # 日期时间格式
+      default-format: "yyyy-MM-dd HH:mm:ss"        # 默认格式
+      strict-mode: false                           # 非严格模式（解析失败返回 null）
+      lenient: true                                # 启用宽松解析
+
+    # ---------------------------------------------------------------
+    # Knife4j API 文档配置 (Knife4j API Documentation Configuration)
+    # ---------------------------------------------------------------
+    knife4j:
+      enabled: true                                # ✅ 启用 Knife4j 文档（默认 true）
+      title: "管理系统 API 文档"               # API 文档标题
+      description: "本文档详细描述了管理系统的后端 API 接口"  # API 文档描述
+      version: "1.0.0"                             # API 版本号
+      base-packages:                               # 扫描的基础包路径列表
+        - "cn.myslayers.libra.framework.toolkit.demo.controller"  # 办公模块 Controller
+      contact:                                     # 联系人信息
+        name: "Libra Team"                         # 联系人姓名
+        url: ""                                    # 联系人网站
+        email: ""                                  # 联系人邮箱
+      license: "Apache License 2.0"                # 许可证名称
+      license-url: "https://www.apache.org/licenses/LICENSE-2.0"  # 许可证 URL
+      enable-enhancement: true                     # 启用 Knife4j 增强功能

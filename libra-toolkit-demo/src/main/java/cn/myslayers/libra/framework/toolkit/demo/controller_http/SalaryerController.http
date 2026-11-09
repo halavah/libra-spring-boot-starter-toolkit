@@ -1,0 +1,21 @@
+### 1. 根据用户ID获取薪资列表 (预期返回2条记录)
+GET http://localhost:5176/salaryer/list?userId=user-123
+Content-Type: application/json
+
+### 2. 为另一个用户发放一笔新薪水
+POST http://localhost:5176/salaryer/issue
+Content-Type: application/json
+
+{
+  "userId": "user-456",
+  "amount": 8200.50,
+  "payDate": "2025-08-15"
+}
+
+### 3. 删除一条预置的薪资记录
+POST http://localhost:5176/salaryer/delete
+Content-Type: application/json
+
+{
+  "id": "sal-003"
+}

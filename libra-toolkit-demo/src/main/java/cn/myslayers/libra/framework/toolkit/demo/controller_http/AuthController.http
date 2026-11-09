@@ -1,0 +1,68 @@
+### ============================================================
+### Bearer Token 认证测试
+### 默认Token为: default-secret-token
+### ============================================================
+
+### 1. Bearer Token - 成功示例
+# @name bearerSuccess
+GET http://127.0.0.1:5176/auth/bearer
+Authorization: Bearer default-secret-token
+
+### 2. Bearer Token - 失败示例 (错误Token)
+# @name bearerFailure
+GET http://127.0.0.1:5176/auth/bearer
+Authorization: Bearer wrong-secret-token
+
+
+### ============================================================
+### Signature 签名认证测试
+### 默认Secret为: default-signature-secret
+###
+### 签名逻辑:
+### 1. 获取当前时间戳 (X-Timestamp) 和一个随机字符串 (X-Nonce)
+### 2. 构造待签名字符串: 请求方法 + "\n" + 请求路径 + "\n" + 时间戳 + "\n" + Nonce
+###    例如: "GET\n/auth/signature\n1672502400000\nrandom-nonce-string"
+### 3. 使用 HMAC-SHA256 算法和预共享的 Secret 对待签名字符串进行加密，并进行Base64编码，得到最终签名 (X-Api-Signature)
+###
+### 以下是一个在线生成签名的工具，方便您测试：
+### https://www.freeformatter.com/hmac-generator.html
+### (请确保选择 HMAC-SHA256 算法)
+### ============================================================
+
+### 3. Signature - 成功示例
+# @name signatureSuccess
+GET http://127.0.0.1:5176/auth/signature
+X-Timestamp: {{timestamp}}
+X-Nonce: {{nonce}}
+X-Api-Signature: {{signature}}
+
+< {%
+    // 使用JavaScript动态生成签名
+    const crypto = require('crypto');
+    const secret = "default-signature-secret";
+    const timestamp = Date.now();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const stringToSign = `GET\n/auth/signature\n${timestamp}\n${nonce}`;
+
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(stringToSign);
+    const signature = hmac.digest('base64');
+
+    // 设置环境变量，供HTTP请求使用
+    request.variables.set("timestamp", timestamp);
+    request.variables.set("nonce", nonce);
+    request.variables.set("signature", signature);
+%}
+
+### 4. Signature - 失败示例 (错误签名)
+# @name signatureFailure
+GET http://127.0.0.1:5176/auth/signature
+X-Timestamp: {{timestamp}}
+X-Nonce: {{nonce}}
+X-Api-Signature: wrong-signature-string
+
+< {%
+    const crypto = require('crypto');
+    request.variables.set("timestamp", Date.now());
+    request.variables.set("nonce", crypto.randomBytes(16).toString('hex'));
+%}

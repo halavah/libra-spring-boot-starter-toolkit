@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.Demo3Mapper">
+
+    <!--
+    ================================================================
+    Demo3Mapper.xml - <include> 标签高级用法专题
+    ================================================================
+    本文件专注于测试 <sql> 和 <include> 标签的各种高级、嵌套和边缘用法，
+    以确保解析器能够正确处理SQL片段的复用和动态替换。
+    -->
+
+    <!-- ==================== 1. 基础SQL片段定义 ==================== -->
+
+    <!-- 片段1: 基础的用户列 -->
+    <sql id="baseUserColumns">
+        id, name, email, status, created_at
+    </sql>
+
+    <!-- 片段2: 动态的过滤条件 (内部包含动态标签) -->
+    <sql id="dynamicConditions">
+        <where>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="startDate != null">
+                AND created_at >= #{startDate}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 片段3: 动态排序 (使用了 ${} 占位符) -->
+    <sql id="dynamicOrderBy">
+        <if test="orderByColumn != null">
+            ORDER BY ${orderByColumn}
+            <if test="orderDirection != null">
+                ${orderDirection}
+            </if>
+        </if>
+    </sql>
+
+    <!-- ==================== 2. <include> 标签测试用例 ==================== -->
+
+    <!-- 测试用例 2.1: 简单引用 -->
+    <!-- 目标: 测试最基本的 <include> 功能 -->
+    <select id="findSimple" resultType="map">
+        SELECT
+        <include refid="baseUserColumns"/>
+        FROM users
+        WHERE id = #{id}
+    </select>
+
+    <!-- 测试用例 2.2: 引用包含动态标签的SQL片段 -->
+    <!-- 目标: 测试 <include> 后，内部的 <if>, <where> 是否能正确解析 -->
+    <select id="findWithDynamicConditions" resultType="map">
+        SELECT
+        <include refid="baseUserColumns"/>
+        FROM users
+        <include refid="dynamicConditions"/>
+    </select>
+
+    <!-- 测试用例 2.3: 引用包含 ${} 占位符的SQL片段 -->
+    <!-- 目标: 测试 <include> 后，内部的 ${} 是否能被正确替换 -->
+    <select id="findWithDynamicOrdering" resultType="map">
+        SELECT
+        <include refid="baseUserColumns"/>
+        FROM users
+        <include refid="dynamicOrderBy"/>
+    </select>
+
+    <!-- ==================== 3. <include> 与 <property> 组合测试 ==================== -->
+
+    <!-- 片段4: 带有可替换占位符的SQL片段 -->
+    <sql id="reusableTableQuery">
+        SELECT ${column_list} FROM ${table_name}
+    </sql>
+
+    <!-- 测试用例 3.1: 使用 <property> 动态传递表名和列名 -->
+    <!-- 目标: 测试 <include> 的 <property> 子元素是否能正确传递和替换值 -->
+    <select id="findWithProperties" resultType="map">
+        <include refid="reusableTableQuery">
+            <property name="table_name" value="users"/>
+            <property name="column_list" value="id, name, email"/>
+        </include>
+        WHERE status = 'active'
+    </select>
+
+    <!-- ==================== 4. 嵌套 <include> 测试 ==================== -->
+
+    <!-- 片段5: 嵌套引用的SQL片段 -->
+    <sql id="nestedIncludeFragment">
+        FROM users
+        <include refid="dynamicConditions"/>
+        <include refid="dynamicOrderBy"/>
+    </sql>
+
+    <!-- 测试用例 4.1: 嵌套引用多个SQL片段 -->
+    <!-- 目标: 测试解析器能否正确处理链式和嵌套的 <include> 引用 -->
+    <select id="findWithNestedInclude" resultType="map">
+        SELECT
+        <include refid="baseUserColumns"/>
+        <include refid="nestedIncludeFragment"/>
+    </select>
+
+</mapper>

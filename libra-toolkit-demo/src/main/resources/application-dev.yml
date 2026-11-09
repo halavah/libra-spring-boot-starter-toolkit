@@ -1,0 +1,22 @@
+# ========================================================================
+# application-dev.yml - 数据库工具类开发/测试专用数据源配置
+# ========================================================================
+# 说明：
+#   DatabaseUtil22 静态初始化时会从本文件读取 master/second 数据源。
+#   此处使用 H2 内存数据库，无需外部 MySQL 服务即可运行测试。
+#   如需连接真实 MySQL，替换下方 url/username/password 即可。
+# ========================================================================
+spring:
+  datasource:
+    dynamic:
+      datasource:
+        master:
+          driver-class-name: org.h2.Driver
+          url: jdbc:h2:mem:master;DB_CLOSE_DELAY=-1;MODE=MySQL
+          username: sa
+          password: ""
+        second:
+          driver-class-name: org.h2.Driver
+          url: jdbc:h2:mem:second;DB_CLOSE_DELAY=-1;MODE=MySQL
+          username: sa
+          password: ""

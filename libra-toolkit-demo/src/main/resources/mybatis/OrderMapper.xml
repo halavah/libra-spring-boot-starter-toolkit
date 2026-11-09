@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.OrderMapper">
+    <!-- 订单基础信息查询 -->
+    <select id="selectOrderById" parameterType="java.lang.Long" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Order">
+        SELECT o.order_id,
+               o.order_no,
+               o.customer_id,
+               o.customer_name,
+               o.customer_phone,
+               o.total_amount,
+               o.discount_amount,
+               o.payment_status,
+               o.payment_method,
+               o.order_date,
+               o.pay_date,
+               o.ship_date,
+               o.delivery_date,
+               o.shipping_address,
+               o.remarks,
+               o.created_time,
+               o.updated_time
+        FROM orders o
+        WHERE o.order_id = #{orderId}
+    </select>
+
+    <!-- 订单详细信息查询（包含订单项） -->
+    <select id="selectOrderDetail" resultType="cn.myslayers.libra.framework.toolkit.demo.model.vo.OrderDetailVO">
+        SELECT o.order_id          as orderId,
+               o.order_no          as orderNo,
+               o.customer_name     as customerName,
+               o.customer_phone    as customerPhone,
+               o.customer_email    as customerEmail,
+               o.shipping_address  as shippingAddress,
+               o.order_date        as orderDate,
+               o.total_amount      as totalAmount,
+               o.discount_amount   as discountAmount,
+               o.shipping_fee      as shippingFee,
+               o.final_amount      as finalAmount,
+               o.status            as status,
+               o.payment_method    as paymentMethod,
+               o.payment_status    as paymentStatus,
+               o.shipping_method   as shippingMethod,
+               o.tracking_number   as trackingNumber,
+               o.remarks           as remarks,
+               o.created_time      as createdTime,
+               oi.item_id          as itemId,
+               oi.product_name     as productName,
+               oi.product_sku      as productSku,
+               oi.quantity         as quantity,
+               oi.unit_price       as unitPrice,
+               oi.total_price      as totalPrice,
+               oi.product_category as productCategory
+        FROM orders o
+                 LEFT JOIN order_item oi ON o.order_id = oi.order_id
+        WHERE o.order_id = #{orderId}
+        ORDER BY oi.item_id ASC
+    </select>
+
+    <!-- 订单列表查询（支持多条件过滤和分页） -->
+    <select id="selectOrderList" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.OrderSubmitDTO" resultType="cn.myslayers.libra.framework.toolkit.demo.model.vo.OrderDetailVO">
+        SELECT
+        o.order_id,
+        o.order_no,
+        o.customer_name,
+        o.customer_phone,
+        o.order_date,
+        o.total_amount,
+        o.final_amount,
+        o.status,
+        o.payment_status,
+        o.shipping_method,
+        o.tracking_number,
+        o.created_time,
+        COUNT(oi.item_id) as item_count
+        FROM orders o
+        LEFT JOIN order_item oi ON o.order_id = oi.order_id
+        <where>
+            <if test="orderNo != null and orderNo != ''">
+                AND o.order_no LIKE CONCAT('%', #{orderNo}, '%')
+            </if>
+            <if test="customerName != null and customerName != ''">
+                AND o.customer_name LIKE CONCAT('%', #{customerName}, '%')
+            </if>
+            <if test="customerPhone != null and customerPhone != ''">
+                AND o.customer_phone LIKE CONCAT('%', #{customerPhone}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND o.status = #{status}
+            </if>
+            <if test="paymentStatus != null and paymentStatus != ''">
+                AND o.payment_status = #{paymentStatus}
+            </if>
+            <if test="orderDateStart != null">
+                AND o.order_date >= #{orderDateStart}
+            </if>
+            <if test="orderDateEnd != null">
+                AND o.order_date &lt;= #{orderDateEnd}
+            </if>
+            <if test="minAmount != null">
+                AND o.final_amount >= #{minAmount}
+            </if>
+            <if test="maxAmount != null">
+                AND o.final_amount &lt;= #{maxAmount}
+            </if>
+            <if test="paymentMethod != null and paymentMethod != ''">
+                AND o.payment_method = #{paymentMethod}
+            </if>
+            <if test="shippingMethod != null and shippingMethod != ''">
+                AND o.shipping_method = #{shippingMethod}
+            </if>
+        </where>
+        GROUP BY o.order_id, o.order_no, o.customer_name, o.customer_phone,
+        o.order_date, o.total_amount, o.final_amount, o.status,
+        o.payment_status, o.shipping_method, o.tracking_number, o.created_time
+        ORDER BY o.order_date DESC, o.order_id DESC
+    </select>
+
+    <!-- 创建订单 -->
+    <insert id="insertOrder" useGeneratedKeys="true" keyProperty="orderId">
+        INSERT INTO orders (order_no,
+                            customer_name,
+                            customer_phone,
+                            customer_email,
+                            shipping_address,
+                            order_date,
+                            total_amount,
+                            discount_amount,
+                            shipping_fee,
+                            final_amount,
+                            status,
+                            payment_method,
+                            payment_status,
+                            shipping_method,
+                            remarks,
+                            created_time,
+                            updated_time)
+        VALUES (#{orderNo},
+                #{customerName},
+                #{customerPhone},
+                #{customerEmail},
+                CONCAT(#{shippingAddress.province}, #{shippingAddress.city},
+                       #{shippingAddress.district}, #{shippingAddress.detailAddress}),
+                #{orderDate},
+                #{totalAmount},
+                #{discountAmount},
+                #{shippingFee},
+                #{finalAmount},
+                #{status},
+                #{paymentMethod},
+                #{paymentStatus},
+                #{shippingMethod},
+                #{remarks},
+                NOW(),
+                NOW())
+    </insert>
+
+    <!-- 批量创建订单项 -->
+    <insert id="batchInsertOrderItems">
+        INSERT INTO order_item (
+        order_id, product_name, product_sku, quantity,
+        unit_price, total_price, product_category
+        ) VALUES
+        <foreach item="item" collection="items" separator=",">
+            (
+            #{orderId},
+            #{item.productName},
+            #{item.productSku},
+            #{item.quantity},
+            #{item.unitPrice},
+            #{item.totalPrice},
+            #{item.productCategory}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 更新订单信息 -->
+    <update id="updateOrder">
+        UPDATE orders
+        <set>
+            <if test="customerName != null and customerName != ''">
+                customer_name = #{customerName},
+            </if>
+            <if test="customerPhone != null and customerPhone != ''">
+                customer_phone = #{customerPhone},
+            </if>
+            <if test="customerEmail != null and customerEmail != ''">
+                customer_email = #{customerEmail},
+            </if>
+            <if test="shippingAddress != null">
+                shipping_address = CONCAT(#{shippingAddress.province}, #{shippingAddress.city},
+                #{shippingAddress.district}, #{shippingAddress.detailAddress}),
+            </if>
+            <if test="totalAmount != null">
+                total_amount = #{totalAmount},
+            </if>
+            <if test="discountAmount != null">
+                discount_amount = #{discountAmount},
+            </if>
+            <if test="shippingFee != null">
+                shipping_fee = #{shippingFee},
+            </if>
+            <if test="finalAmount != null">
+                final_amount = #{finalAmount},
+            </if>
+            <if test="status != null and status != ''">
+                status = #{status},
+            </if>
+            <if test="paymentMethod != null and paymentMethod != ''">
+                payment_method = #{paymentMethod},
+            </if>
+            <if test="paymentStatus != null and paymentStatus != ''">
+                payment_status = #{paymentStatus},
+            </if>
+            <if test="shippingMethod != null and shippingMethod != ''">
+                shipping_method = #{shippingMethod},
+            </if>
+            <if test="trackingNumber != null and trackingNumber != ''">
+                tracking_number = #{trackingNumber},
+            </if>
+            <if test="remarks != null">
+                remarks = #{remarks},
+            </if>
+            updated_time = NOW()
+        </set>
+        WHERE order_id = #{orderId}
+    </update>
+
+    <!-- 批量更新订单状态 -->
+    <update id="batchUpdateOrderStatus">
+        UPDATE orders
+        SET status = #{newStatus}, updated_time = NOW()
+        WHERE order_id IN
+        <foreach item="id" collection="orderIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 更新订单支付状态 -->
+    <update id="updatePaymentStatus">
+        UPDATE orders
+        SET payment_status = #{paymentStatus},
+            pay_date       = #{payDate},
+            updated_time   = NOW()
+        WHERE order_id = #{orderId}
+    </update>
+
+    <!-- 删除订单（软删除） -->
+    <update id="deleteOrder">
+        UPDATE orders
+        SET status       = 'CANCELLED',
+            updated_time = NOW()
+        WHERE order_id = #{orderId}
+    </update>
+
+    <!-- 物理删除订单 -->
+    <delete id="physicalDeleteOrder">
+        DELETE
+        FROM orders
+        WHERE order_id = #{orderId}
+    </delete>
+
+    <!-- 订单统计信息 -->
+    <select id="getOrderStatistics" resultType="map">
+        SELECT
+        COUNT(*) as total_orders,
+        COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as pending_orders,
+        COUNT(CASE WHEN status = 'PROCESSING' THEN 1 END) as processing_orders,
+        COUNT(CASE WHEN status = 'SHIPPED' THEN 1 END) as shipped_orders,
+        COUNT(CASE WHEN status = 'DELIVERED' THEN 1 END) as delivered_orders,
+        COUNT(CASE WHEN status = 'CANCELLED' THEN 1 END) as cancelled_orders,
+        COUNT(CASE WHEN payment_status = 'PAID' THEN 1 END) as paid_orders,
+        COUNT(CASE WHEN payment_status = 'PENDING' THEN 1 END) as unpaid_orders,
+        SUM(final_amount) as total_amount,
+        AVG(final_amount) as avg_amount,
+        MAX(final_amount) as max_amount,
+        MIN(final_amount) as min_amount
+        FROM orders
+        <where>
+            <if test="startDate != null">
+                AND order_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND order_date &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 订单销售趋势分析（按日统计） -->
+    <select id="getOrderSalesTrendByDay" resultType="map">
+        SELECT
+        DATE(order_date) as order_day,
+        COUNT(*) as order_count,
+        SUM(final_amount) as daily_sales,
+        AVG(final_amount) as avg_order_value,
+        COUNT(DISTINCT customer_phone) as unique_customers
+        FROM orders
+        <where>
+            <if test="startDate != null">
+                AND order_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND order_date &lt;= #{endDate}
+            </if>
+        </where>
+        GROUP BY DATE(order_date)
+        ORDER BY order_day DESC
+    </select>
+
+    <!-- 订单销售趋势分析（按月统计） -->
+    <select id="getOrderSalesTrendByMonth" resultType="map">
+        SELECT
+        YEAR(order_date) as year,
+        MONTH(order_date) as month,
+        DATE_FORMAT(order_date, '%Y-%m') as year_month,
+        COUNT(*) as order_count,
+        SUM(final_amount) as monthly_sales,
+        AVG(final_amount) as avg_order_value,
+        COUNT(DISTINCT customer_phone) as unique_customers
+        FROM orders
+        <where>
+            <if test="startYear != null">
+                AND YEAR(order_date) >= #{startYear}
+            </if>
+            <if test="endYear != null">
+                AND YEAR(order_date) &lt;= #{endYear}
+            </if>
+        </where>
+        GROUP BY YEAR(order_date), MONTH(order_date)
+        ORDER BY year DESC, month DESC
+    </select>
+
+    <!-- 产品销售排行 -->
+    <select id="getProductSalesRanking" resultType="map">
+        SELECT
+        oi.product_name,
+        oi.product_sku,
+        oi.product_category,
+        SUM(oi.quantity) as total_quantity,
+        COUNT(DISTINCT oi.order_id) as order_count,
+        SUM(oi.total_price) as total_sales,
+        AVG(oi.unit_price) as avg_unit_price,
+        RANK() OVER (ORDER BY SUM(oi.quantity) DESC) as quantity_rank,
+        RANK() OVER (ORDER BY SUM(oi.total_price) DESC) as sales_rank
+        FROM order_item oi
+        JOIN orders o ON oi.order_id = o.order_id
+        <where>
+            <if test="startDate != null">
+                AND o.order_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND o.order_date &lt;= #{endDate}
+            </if>
+        </where>
+        GROUP BY oi.product_name, oi.product_sku, oi.product_category
+        ORDER BY total_quantity DESC, total_sales DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 客户消费分析 -->
+    <select id="getCustomerConsumptionAnalysis" resultType="map">
+        SELECT
+        o.customer_name,
+        o.customer_phone,
+        o.customer_email,
+        COUNT(o.order_id) as order_count,
+        SUM(o.final_amount) as total_consumption,
+        AVG(o.final_amount) as avg_order_value,
+        MAX(o.final_amount) as max_order_value,
+        MIN(o.final_amount) as min_order_value,
+        MAX(o.order_date) as last_order_date,
+        MIN(o.order_date) as first_order_date,
+        DATEDIFF(MAX(o.order_date), MIN(o.order_date)) as customer_lifetime_days,
+        CASE
+        WHEN COUNT(o.order_id) >= 10 THEN 'VIP'
+        WHEN COUNT(o.order_id) >= 5 THEN 'GOLD'
+        WHEN COUNT(o.order_id) >= 2 THEN 'SILVER'
+        ELSE 'BRONZE'
+        END as customer_level
+        FROM orders o
+        <where>
+            <if test="customerId != null">
+                AND o.customer_id = #{customerId}
+            </if>
+            <if test="startDate != null">
+                AND o.order_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND o.order_date &lt;= #{endDate}
+            </if>
+        </where>
+        GROUP BY o.customer_phone, o.customer_name, o.customer_email
+        ORDER BY total_consumption DESC, order_count DESC
+    </select>
+
+    <!-- 订单状态流转分析 -->
+    <select id="getOrderStatusFlowAnalysis" resultType="map">
+        SELECT
+        status,
+        COUNT(*) as status_count,
+        ROUND((COUNT(*) * 100.0 / total.total_orders), 2) as percentage,
+        AVG(DATEDIFF(updated_time, created_time)) as avg_days_in_status
+        FROM orders o
+        CROSS JOIN (
+        SELECT COUNT(*) as total_orders
+        FROM orders
+        <where>
+            <if test="orderDateStart != null">
+                AND order_date >= #{orderDateStart}
+            </if>
+            <if test="orderDateEnd != null">
+                AND order_date &lt;= #{orderDateEnd}
+            </if>
+        </where>
+        ) total
+        <where>
+            <if test="orderDateStart != null">
+                AND o.order_date >= #{orderDateStart}
+            </if>
+            <if test="orderDateEnd != null">
+                AND o.order_date &lt;= #{orderDateEnd}
+            </if>
+        </where>
+        GROUP BY status
+        ORDER BY status_count DESC
+    </select>
+
+    <!-- 订单配送效率分析 -->
+    <select id="getShippingEfficiencyAnalysis" resultType="map">
+        SELECT
+        shipping_method,
+        COUNT(*) as order_count,
+        AVG(shipping_fee) as avg_shipping_fee,
+        COUNT(CASE WHEN status = 'DELIVERED' THEN 1 END) as delivered_count,
+        ROUND((COUNT(CASE WHEN status = 'DELIVERED' THEN 1 END) * 100.0 / COUNT(*)), 2) as delivery_rate,
+        AVG(CASE WHEN status = 'DELIVERED' THEN DATEDIFF(updated_time, order_date) END) as avg_delivery_days
+        FROM orders
+        <where>
+            <if test="startDate != null">
+                AND order_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND order_date &lt;= #{endDate}
+            </if>
+        </where>
+        GROUP BY shipping_method
+        ORDER BY delivery_rate DESC, avg_delivery_days ASC
+    </select>
+
+    <!-- 复杂查询：订单完整报告 -->
+    <select id="selectOrderCompleteReport" resultType="map">
+        SELECT o.order_id,
+               o.order_no,
+               o.customer_name,
+               o.customer_phone,
+               o.order_date,
+               o.final_amount,
+               o.status,
+               o.payment_status,
+               o.shipping_method,
+               o.tracking_number,
+               COUNT(oi.item_id)                          as item_count,
+               SUM(oi.quantity)                           as total_quantity,
+               GROUP_CONCAT(DISTINCT oi.product_category) as product_categories,
+               GROUP_CONCAT(
+                   CONCAT(oi.product_name, '(', oi.quantity, ')') ORDER BY oi.item_id ASC
+                SEPARATOR '; '
+               )                                          as product_summary,
+               CASE
+                   WHEN o.status = 'DELIVERED' THEN DATEDIFF(o.updated_time, o.order_date)
+                   ELSE DATEDIFF(CURDATE(), o.order_date)
+                   END                                    as days_since_order,
+               customer_stats.total_orders                as customer_total_orders,
+               customer_stats.total_consumption           as customer_total_consumption
+        FROM orders o
+                 LEFT JOIN order_item oi ON o.order_id = oi.order_id
+                 LEFT JOIN (SELECT customer_phone,
+                                   COUNT(*)          as total_orders,
+                                   SUM(final_amount) as total_consumption
+                            FROM orders
+                            GROUP BY customer_phone) customer_stats ON o.customer_phone = customer_stats.customer_phone
+        WHERE o.order_id = #{orderId}
+        GROUP BY o.order_id, o.order_no, o.customer_name, o.customer_phone,
+                 o.order_date, o.final_amount, o.status, o.payment_status,
+                 o.shipping_method, o.tracking_number, customer_stats.total_orders,
+                 customer_stats.total_consumption
+    </select>
+</mapper>

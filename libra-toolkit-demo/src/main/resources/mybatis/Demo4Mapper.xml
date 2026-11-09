@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.Demo4Mapper">
+
+    <!--
+    ================================================================
+    Demo4Mapper.xml - 边缘案例与特殊语法专题
+    ================================================================
+    本文件专注于测试解析器在处理各种边缘情况、特殊字符、复杂OGNL表达式
+    以及非标准用法时的健壮性。
+    -->
+
+    <!-- ==================== 1. 特殊字符与XML实体测试 ==================== -->
+
+    <!-- 测试用例 1.1: OGNL表达式中使用XML实体字符 -->
+    <!-- 目标: 验证 test 属性中的 &, <, > 等能否被正确解析 -->
+    <select id="findWithXmlEntitiesInTest" resultType="map">
+        SELECT * FROM records
+        <where>
+            <if test="priority > 5 and priority &lt; 10">
+                AND priority_level = 'high'
+            </if>
+            <if test="name == 'special &amp; co'">
+                AND name = #{name}
+            </if>
+        </where>
+    </select>
+
+    <!-- 测试用例 1.2: 使用 CDATA 块包裹动态SQL -->
+    <!-- 目标: 验证解析器能否正确处理 CDATA 块内的逻辑 -->
+    <select id="findWithCdataBlock" resultType="map">
+        SELECT * FROM records
+        <where>
+            <![CDATA[
+                <if test="startDate != null and endDate != null">
+                    AND created_at >= #{startDate} AND created_at < #{endDate}
+                </if>
+            ]]>
+        </where>
+    </select>
+
+    <!-- ==================== 2. 边缘情况测试 ==================== -->
+
+    <!-- 测试用例 2.1: 空的动态标签 -->
+    <!-- 目标: 验证空的 <where>, <set>, <trim> 标签不会导致解析错误 -->
+    <select id="findWithEmptyDynamicTags" resultType="map">
+        SELECT * FROM users <where></where>
+    </select>
+
+    <update id="updateWithEmptySetTag">
+        UPDATE users <set></set> WHERE id = #{id}
+    </update>
+
+    <!-- 测试用例 2.2: 动态标签内容解析后为空 -->
+    <!-- 目标: 验证 <if> 条件不满足时，<where> 标签能正确处理空内容 -->
+    <select id="findWithResultingEmptyWhere" resultType="map">
+        SELECT * FROM users
+        <where>
+            <if test="name == 'non_existent_user'">
+                AND name = #{name}
+            </if>
+        </where>
+    </select>
+
+    <!-- ==================== 3. 复杂OGNL表达式测试 ==================== -->
+
+    <!-- 测试用例 3.1: 简单布尔值判断 -->
+    <!-- 目标: 验证 test 属性中可以直接判断Map中的布尔值 -->
+    <select id="findByUserMethod" parameterType="map" resultType="map">
+        SELECT * FROM users
+        <where>
+            <if test="isAdmin == true">
+                AND role = 'admin'
+            </if>
+            <if test="canViewSensitiveData == true">
+                AND can_view_sensitive = 1
+            </if>
+        </where>
+    </select>
+
+    <!-- 测试用例 3.2: 使用三元运算符 -->
+    <!-- 目标: 验证 test 属性中支持三元运算符 -->
+    <!-- 注意: MyBatis 的 #{} 语法不支持三元运算符，因为冒号会被解析为jdbcType分隔符 -->
+    <!-- 正确做法: 使用 <choose> 或者将三元运算符放在 test 属性中 -->
+    <select id="findByTernaryOperator" resultType="map">
+        SELECT * FROM users
+        WHERE status =
+        <choose>
+            <when test="isActive">1</when>
+            <otherwise>0</otherwise>
+        </choose>
+    </select>
+
+    <!-- 测试用例 3.3: 复杂的逻辑与算术运算 -->
+    <!-- 目标: 验证 test 属性中支持复杂的混合运算 -->
+    <select id="findByComplexExpression" resultType="map">
+        SELECT * FROM users
+        <where>
+            <if test="(age + 5) * 10 > 300 and (name.length() > 4 or status == 'active')">
+                AND is_special_user = 1
+            </if>
+        </where>
+    </select>
+
+    <!-- ==================== 4. MyBatis内置变量测试 ==================== -->
+
+    <!-- 测试用例 4.1: 使用 _parameter 内置变量 -->
+    <!-- 目标: 验证当参数为简单类型时，_parameter 可以被正确引用 -->
+    <select id="findBySimpleParameter" parameterType="string" resultType="map">
+        SELECT * FROM users
+        <where>
+            <if test="_parameter != null and _parameter != ''">
+                AND name = #{_parameter}
+            </if>
+        </where>
+    </select>
+
+    <!-- 测试用例 4.2: 使用 _databaseId 内置变量 (模拟) -->
+    <!-- 目标: 验证 _databaseId 可以在逻辑判断中使用 -->
+    <select id="findByDatabaseId" resultType="map">
+        SELECT
+        <choose>
+            <when test="_databaseId == 'mysql'">
+                id, name, email
+            </when>
+            <when test="_databaseId == 'oracle'">
+                id, user_name as name, user_email as email
+            </when>
+            <otherwise>
+                *
+            </otherwise>
+        </choose>
+        FROM users
+    </select>
+
+</mapper>

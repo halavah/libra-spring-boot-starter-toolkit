@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.ReportMapper">
+    <!-- 业务概览报表 -->
+    <select id="selectBusinessOverview" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.ReportQueryDTO" resultType="cn.myslayers.libra.framework.toolkit.demo.model.vo.ReportDataVO">
+        SELECT '业务概览'                                                                                  as report_title,
+               DATE_FORMAT(NOW(), '%Y-%m-%d')                                                              as report_date,
+               (SELECT COUNT(*) FROM employee WHERE status = 'ACTIVE')                                     as total_employees,
+               (SELECT COUNT(*) FROM department WHERE status = 'ACTIVE')                                   as total_departments,
+               (SELECT COUNT(*) FROM project WHERE status = 'RUNNING')                                     as active_projects,
+               (SELECT ROUND(AVG(base_salary), 2) FROM employee WHERE status = 'ACTIVE')                   as avg_salary,
+               (SELECT SUM(total_amount) FROM orders WHERE order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as monthly_revenue,
+               (SELECT COUNT(*) FROM orders WHERE order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY))          as monthly_orders
+    </select>
+
+    <!-- 员工统计报表 -->
+    <select id="selectEmployeeStatistics" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.ReportQueryDTO" resultType="java.util.Map">
+        SELECT
+        d.department_id,
+        d.department_name,
+        d.manager_name,
+        d.budget as department_budget,
+
+        -- 员工统计
+        COUNT(DISTINCT e.employee_id) as employee_count,
+        COUNT(DISTINCT CASE WHEN e.status = 'ACTIVE' THEN e.employee_id END) as active_employees,
+        COUNT(DISTINCT CASE WHEN e.status = 'INACTIVE' THEN e.employee_id END) as inactive_employees,
+
+        -- 薪资统计
+        IFNULL(salary_stats.total_salary, 0) as total_salary_cost,
+        IFNULL(salary_stats.avg_salary, 0) as avg_salary,
+        IFNULL(salary_stats.max_salary, 0) as max_salary,
+        IFNULL(salary_stats.min_salary, 0) as min_salary,
+
+        -- 预算使用率
+        CASE
+        WHEN d.budget > 0 THEN ROUND((IFNULL(salary_stats.total_salary, 0) / d.budget) * 100, 2)
+        ELSE 0
+        END as budget_usage_percentage,
+
+        -- 项目参与统计
+        IFNULL(project_stats.project_count, 0) as managed_projects,
+        IFNULL(project_stats.total_project_budget, 0) as managed_project_budget,
+
+        -- 绩效评级分布
+        employee_perf.excellent_count,
+        employee_perf.good_count,
+        employee_perf.average_count,
+        employee_perf.poor_count
+
+        FROM department d
+        LEFT JOIN employee e ON d.department_id = e.department_id
+        LEFT JOIN (
+        SELECT
+        e2.department_id,
+        SUM(s.net_salary) as total_salary,
+        AVG(s.net_salary) as avg_salary,
+        MAX(s.net_salary) as max_salary,
+        MIN(s.net_salary) as min_salary
+        FROM salary s
+        JOIN employee e2 ON s.employee_id = e2.employee_id
+        WHERE s.status = 'PAID'
+        <if test="payDateStart != null">
+            AND s.pay_date >= #{payDateStart}
+        </if>
+        <if test="payDateEnd != null">
+            AND s.pay_date &lt;= #{payDateEnd}
+        </if>
+        GROUP BY e2.department_id
+        ) salary_stats ON d.department_id = salary_stats.department_id
+        LEFT JOIN (
+        SELECT
+        department_id,
+        COUNT(*) as project_count,
+        SUM(budget) as total_project_budget
+        FROM project
+        WHERE status IN ('ACTIVE', 'COMPLETED')
+        GROUP BY department_id
+        ) project_stats ON d.department_id = project_stats.department_id
+        LEFT JOIN (
+        SELECT
+        e3.department_id,
+        COUNT(CASE WHEN e3.performance_rating = 'EXCELLENT' THEN 1 END) as excellent_count,
+        COUNT(CASE WHEN e3.performance_rating = 'GOOD' THEN 1 END) as good_count,
+        COUNT(CASE WHEN e3.performance_rating = 'AVERAGE' THEN 1 END) as average_count,
+        COUNT(CASE WHEN e3.performance_rating = 'POOR' THEN 1 END) as poor_count
+        FROM employee e3
+        WHERE e3.status = 'ACTIVE'
+        GROUP BY e3.department_id
+        ) employee_perf ON d.department_id = employee_perf.department_id
+        <where>
+            <if test="departmentId != null">
+                AND d.department_id = #{departmentId}
+            </if>
+            <if test="departmentStatus != null and departmentStatus != ''">
+                AND d.status = #{departmentStatus}
+            </if>
+        </where>
+        GROUP BY d.department_id, d.department_name, d.manager_name, d.budget,
+        salary_stats.total_salary, salary_stats.avg_salary, salary_stats.max_salary, salary_stats.min_salary,
+        project_stats.project_count, project_stats.total_project_budget,
+        employee_perf.excellent_count, employee_perf.good_count,
+        employee_perf.average_count, employee_perf.poor_count
+        ORDER BY d.department_id
+    </select>
+
+    <!-- 财务分析报表 -->
+    <select id="selectFinancialReport" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.ReportQueryDTO" resultType="map">
+        SELECT report_period.period_name,
+               report_period.start_date,
+               report_period.end_date,
+
+               -- 收入统计
+               IFNULL(order_income.total_revenue, 0)         as total_revenue,
+               IFNULL(order_income.order_count, 0)           as order_count,
+               IFNULL(order_income.avg_order_value, 0)       as avg_order_value,
+
+               -- 成本统计
+               IFNULL(salary_costs.total_salary_cost, 0)     as total_salary_cost,
+               IFNULL(salary_costs.employee_count, 0)        as payroll_employee_count,
+               IFNULL(project_costs.total_project_cost, 0)   as total_project_cost,
+               IFNULL(project_costs.project_count, 0)        as active_project_count,
+
+               -- 利润计算
+               (IFNULL(order_income.total_revenue, 0) -
+                IFNULL(salary_costs.total_salary_cost, 0) -
+                IFNULL(project_costs.total_project_cost, 0)) as gross_profit,
+
+               -- 利润率计算
+               CASE
+                   WHEN IFNULL(order_income.total_revenue, 0) > 0 THEN
+                       ROUND(((IFNULL(order_income.total_revenue, 0) -
+                               IFNULL(salary_costs.total_salary_cost, 0) -
+                               IFNULL(project_costs.total_project_cost, 0)) /
+                              IFNULL(order_income.total_revenue, 0)) * 100, 2)
+                   ELSE 0
+                   END                                       as profit_margin_percentage,
+
+               -- 成本占比
+               CASE
+                   WHEN IFNULL(order_income.total_revenue, 0) > 0 THEN
+                       ROUND((IFNULL(salary_costs.total_salary_cost, 0) / IFNULL(order_income.total_revenue, 0)) * 100, 2)
+                   ELSE 0
+                   END                                       as salary_cost_ratio,
+
+               CASE
+                   WHEN IFNULL(order_income.total_revenue, 0) > 0 THEN
+                       ROUND((IFNULL(project_costs.total_project_cost, 0) / IFNULL(order_income.total_revenue, 0)) * 100, 2)
+                   ELSE 0
+                   END                                       as project_cost_ratio
+
+        FROM (SELECT #{periodName} as period_name,
+                     #{startDate}  as start_date,
+                     #{endDate}    as end_date) report_period
+                 LEFT JOIN (SELECT SUM(final_amount) as total_revenue,
+                                   COUNT(*)          as order_count,
+                                   AVG(final_amount) as avg_order_value
+                            FROM orders
+                            WHERE order_date BETWEEN #{startDate} AND #{endDate}
+                              AND status NOT IN ('CANCELLED')) order_income ON 1 = 1
+                 LEFT JOIN (SELECT SUM(net_salary)             as total_salary_cost,
+                                   COUNT(DISTINCT employee_id) as employee_count
+                            FROM salary
+                            WHERE pay_date BETWEEN #{startDate} AND #{endDate}
+                              AND status = 'PAID') salary_costs ON 1 = 1
+                 LEFT JOIN (SELECT SUM(budget) as total_project_cost,
+                                   COUNT(*)    as project_count
+                            FROM project
+                            WHERE start_date &lt;= #{endDate}
+                              AND (end_date IS NULL OR end_date >= #{startDate})
+                              AND status IN ('ACTIVE', 'COMPLETED')) project_costs ON 1 = 1
+    </select>
+
+    <!-- 项目绩效报表 -->
+    <select id="selectProjectPerformanceReport" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.ReportQueryDTO" resultType="map">
+        SELECT
+        p.project_id,
+        p.project_name,
+        p.start_date,
+        p.end_date,
+        p.budget,
+        p.status,
+        d.department_name,
+
+        -- 团队统计
+        IFNULL(team_stats.team_size, 0) as team_size,
+        IFNULL(team_stats.avg_contribution_rate, 0) as avg_contribution_rate,
+
+        -- 进度统计
+        IFNULL(milestone_stats.total_milestones, 0) as total_milestones,
+        IFNULL(milestone_stats.completed_milestones, 0) as completed_milestones,
+        CASE
+        WHEN IFNULL(milestone_stats.total_milestones, 0) > 0 THEN
+        ROUND((IFNULL(milestone_stats.completed_milestones, 0) * 100.0 /
+        IFNULL(milestone_stats.total_milestones, 0)), 2)
+        ELSE 0
+        END as completion_percentage,
+
+        -- 时间分析
+        DATEDIFF(IFNULL(p.end_date, CURDATE()), p.start_date) as total_duration_days,
+        CASE
+        WHEN p.status = 'COMPLETED' AND p.end_date IS NOT NULL THEN
+        DATEDIFF(p.end_date, p.start_date)
+        WHEN p.status IN ('ACTIVE', 'PLANNING') THEN
+        DATEDIFF(CURDATE(), p.start_date)
+        ELSE 0
+        END as actual_duration_days,
+
+        -- 预算分析
+        IFNULL(project_expenses.actual_expenses, 0) as actual_expenses,
+        (p.budget - IFNULL(project_expenses.actual_expenses, 0)) as budget_remaining,
+        CASE
+        WHEN p.budget > 0 THEN
+        ROUND((IFNULL(project_expenses.actual_expenses, 0) / p.budget) * 100, 2)
+        ELSE 0
+        END as budget_usage_percentage,
+
+        -- 风险评估
+        CASE
+        WHEN p.status = 'COMPLETED' THEN 'COMPLETED'
+        WHEN p.end_date &lt; CURDATE() AND p.status != 'COMPLETED' THEN 'OVERDUE'
+        WHEN IFNULL(project_expenses.actual_expenses, 0) > p.budget THEN 'OVER_BUDGET'
+        WHEN p.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 'HIGH_RISK'
+        WHEN p.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 'MEDIUM_RISK'
+        ELSE 'LOW_RISK'
+        END as risk_level
+
+        FROM project p
+        LEFT JOIN department d ON p.department_id = d.department_id
+        LEFT JOIN (
+        SELECT
+        project_id,
+        COUNT(*) as team_size,
+        AVG(contribution_rate) as avg_contribution_rate
+        FROM project_employee
+        GROUP BY project_id
+        ) team_stats ON p.project_id = team_stats.project_id
+        LEFT JOIN (
+        SELECT
+        project_id,
+        COUNT(*) as total_milestones,
+        COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed_milestones
+        FROM project_milestone
+        GROUP BY project_id
+        ) milestone_stats ON p.project_id = milestone_stats.project_id
+        LEFT JOIN (
+        SELECT
+        project_id,
+        SUM(expense_amount) as actual_expenses
+        FROM project_expense
+        GROUP BY project_id
+        ) project_expenses ON p.project_id = project_expenses.project_id
+        <where>
+            <if test="projectId != null">
+                AND p.project_id = #{projectId}
+            </if>
+            <if test="departmentId != null">
+                AND p.department_id = #{departmentId}
+            </if>
+            <if test="status != null and status != ''">
+                AND p.status = #{status}
+            </if>
+            <if test="riskLevel != null and riskLevel != ''">
+                <choose>
+                    <when test="riskLevel == 'OVERDUE'">
+                        AND p.end_date &lt; CURDATE() AND p.status != 'COMPLETED'
+                    </when>
+                    <when test="riskLevel == 'HIGH_RISK'">
+                        AND p.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 7 DAY) AND p.status != 'COMPLETED'
+                    </when>
+                    <when test="riskLevel == 'MEDIUM_RISK'">
+                        AND p.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND p.status != 'COMPLETED'
+                    </when>
+                </choose>
+            </if>
+            <if test="startDate != null">
+                AND p.start_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND p.end_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY
+        CASE
+        WHEN p.end_date &lt; CURDATE() AND p.status != 'COMPLETED' THEN 1
+        WHEN IFNULL(project_expenses.actual_expenses, 0) > p.budget THEN 2
+        WHEN p.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 3
+        ELSE 4
+        END,
+        p.start_date DESC
+    </select>
+
+    <!-- 销售分析报表 -->
+    <select id="selectSalesAnalysisReport" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.ReportQueryDTO" resultType="map">
+        SELECT
+        analysis_dimension.dimension_type,
+        analysis_dimension.dimension_value,
+        analysis_dimension.dimension_label,
+
+        -- 订单统计
+        COUNT(o.order_id) as order_count,
+        SUM(o.final_amount) as total_sales,
+        AVG(o.final_amount) as avg_order_value,
+        MAX(o.final_amount) as max_order_value,
+        MIN(o.final_amount) as min_order_value,
+
+        -- 客户统计
+        COUNT(DISTINCT o.customer_phone) as unique_customers,
+
+        -- 产品统计
+        SUM(oi.quantity) as total_quantity,
+        COUNT(DISTINCT oi.product_sku) as unique_products,
+
+        -- 支付方式分布
+        COUNT(CASE WHEN o.payment_method = 'CREDIT_CARD' THEN 1 END) as credit_card_orders,
+        COUNT(CASE WHEN o.payment_method = 'ALIPAY' THEN 1 END) as alipay_orders,
+        COUNT(CASE WHEN o.payment_method = 'WECHAT_PAY' THEN 1 END) as wechat_orders,
+        COUNT(CASE WHEN o.payment_method = 'BANK_TRANSFER' THEN 1 END) as bank_transfer_orders,
+
+        -- 订单状态分布
+        COUNT(CASE WHEN o.status = 'PENDING' THEN 1 END) as pending_orders,
+        COUNT(CASE WHEN o.status = 'PROCESSING' THEN 1 END) as processing_orders,
+        COUNT(CASE WHEN o.status = 'SHIPPED' THEN 1 END) as shipped_orders,
+        COUNT(CASE WHEN o.status = 'DELIVERED' THEN 1 END) as delivered_orders,
+        COUNT(CASE WHEN o.status = 'CANCELLED' THEN 1 END) as cancelled_orders,
+
+        -- 转化率计算
+        ROUND((COUNT(CASE WHEN o.status = 'DELIVERED' THEN 1 END) * 100.0 / COUNT(o.order_id)), 2) as delivery_rate,
+        ROUND((COUNT(CASE WHEN o.status != 'CANCELLED' THEN 1 END) * 100.0 / COUNT(o.order_id)), 2) as success_rate
+
+        FROM (
+        <choose>
+            <when test="dimensionType == 'DAILY'">
+                SELECT 'DAILY' as dimension_type,
+                DATE(order_date) as dimension_value,
+                DATE_FORMAT(order_date, '%Y-%m-%d') as dimension_label
+                FROM orders
+                WHERE order_date BETWEEN #{startDate} AND #{endDate}
+                GROUP BY DATE(order_date)
+            </when>
+            <when test="dimensionType == 'MONTHLY'">
+                SELECT 'MONTHLY' as dimension_type,
+                DATE_FORMAT(order_date, '%Y-%m') as dimension_value,
+                DATE_FORMAT(order_date, '%Y年%m月') as dimension_label
+                FROM orders
+                WHERE order_date BETWEEN #{startDate} AND #{endDate}
+                GROUP BY DATE_FORMAT(order_date, '%Y-%m')
+            </when>
+            <when test="dimensionType == 'PAYMENT_METHOD'">
+                SELECT 'PAYMENT_METHOD' as dimension_type,
+                payment_method as dimension_value,
+                payment_method as dimension_label
+                FROM orders
+                WHERE order_date BETWEEN #{startDate} AND #{endDate}
+                GROUP BY payment_method
+            </when>
+            <when test="dimensionType == 'CUSTOMER_LEVEL'">
+                SELECT 'CUSTOMER_LEVEL' as dimension_type,
+                customer_level as dimension_value,
+                customer_level as dimension_label
+                FROM (
+                SELECT
+                customer_phone,
+                CASE
+                WHEN COUNT(*) >= 10 THEN 'VIP'
+                WHEN COUNT(*) >= 5 THEN 'GOLD'
+                WHEN COUNT(*) >= 2 THEN 'SILVER'
+                ELSE 'BRONZE'
+                END as customer_level
+                FROM orders
+                WHERE order_date BETWEEN #{startDate} AND #{endDate}
+                GROUP BY customer_phone
+                ) customer_levels
+                GROUP BY customer_level
+            </when>
+            <otherwise>
+                SELECT 'ALL' as dimension_type, 'ALL' as dimension_value, '全部' as dimension_label
+            </otherwise>
+        </choose>
+        ) analysis_dimension
+        LEFT JOIN orders o ON (
+        <choose>
+            <when test="dimensionType == 'DAILY'">
+                DATE(o.order_date) = analysis_dimension.dimension_value
+            </when>
+            <when test="dimensionType == 'MONTHLY'">
+                DATE_FORMAT(o.order_date, '%Y-%m') = analysis_dimension.dimension_value
+            </when>
+            <when test="dimensionType == 'PAYMENT_METHOD'">
+                o.payment_method = analysis_dimension.dimension_value
+            </when>
+            <when test="dimensionType == 'CUSTOMER_LEVEL'">
+                EXISTS (
+                SELECT 1 FROM (
+                SELECT
+                customer_phone,
+                CASE
+                WHEN COUNT(*) >= 10 THEN 'VIP'
+                WHEN COUNT(*) >= 5 THEN 'GOLD'
+                WHEN COUNT(*) >= 2 THEN 'SILVER'
+                ELSE 'BRONZE'
+                END as customer_level
+                FROM orders
+                WHERE order_date BETWEEN #{startDate} AND #{endDate}
+                GROUP BY customer_phone
+                ) cl
+                WHERE cl.customer_phone = o.customer_phone
+                AND cl.customer_level = analysis_dimension.dimension_value
+                )
+            </when>
+            <otherwise>
+                1=1
+            </otherwise>
+        </choose>
+        AND o.order_date BETWEEN #{startDate} AND #{endDate}
+        )
+        LEFT JOIN order_item oi ON o.order_id = oi.order_id
+        GROUP BY analysis_dimension.dimension_type, analysis_dimension.dimension_value, analysis_dimension.dimension_label
+        ORDER BY analysis_dimension.dimension_value
+    </select>
+
+    <!-- 员工绩效综合报表 -->
+    <select id="selectEmployeePerformanceReport" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.ReportQueryDTO" resultType="map">
+        SELECT
+        e.employee_id,
+        e.employee_code,
+        e.name as employee_name,
+        e.position,
+        e.hire_date,
+        e.status,
+        e.performance_rating,
+        d.department_name,
+
+        -- 薪资统计
+        IFNULL(salary_stats.avg_salary, 0) as avg_salary,
+        IFNULL(salary_stats.total_salary, 0) as total_salary_received,
+        IFNULL(salary_stats.pay_periods, 0) as pay_periods,
+        IFNULL(salary_stats.latest_salary, 0) as latest_salary,
+
+        -- 项目参与统计
+        IFNULL(project_stats.project_count, 0) as participated_projects,
+        IFNULL(project_stats.active_projects, 0) as active_projects,
+        IFNULL(project_stats.completed_projects, 0) as completed_projects,
+        IFNULL(project_stats.avg_contribution_rate, 0) as avg_contribution_rate,
+
+        -- 工作年限计算
+        TIMESTAMPDIFF(YEAR, e.hire_date, CURDATE()) as years_of_service,
+        TIMESTAMPDIFF(MONTH, e.hire_date, CURDATE()) as months_of_service,
+
+        -- 部门排名
+        dept_ranking.salary_rank_in_dept,
+        dept_ranking.performance_rank_in_dept,
+
+        -- 综合评分
+        CASE
+        WHEN e.performance_rating = 'EXCELLENT' THEN 95
+        WHEN e.performance_rating = 'GOOD' THEN 85
+        WHEN e.performance_rating = 'AVERAGE' THEN 75
+        WHEN e.performance_rating = 'POOR' THEN 60
+        ELSE 70
+        END +
+        CASE
+        WHEN IFNULL(project_stats.project_count, 0) >= 5 THEN 5
+        WHEN IFNULL(project_stats.project_count, 0) >= 3 THEN 3
+        WHEN IFNULL(project_stats.project_count, 0) >= 1 THEN 1
+        ELSE 0
+        END as comprehensive_score
+
+        FROM employee e
+        LEFT JOIN department d ON e.department_id = d.department_id
+        LEFT JOIN (
+        SELECT
+        employee_id,
+        AVG(net_salary) as avg_salary,
+        SUM(net_salary) as total_salary,
+        COUNT(*) as pay_periods,
+        MAX(net_salary) as latest_salary
+        FROM salary
+        WHERE status = 'PAID'
+        <if test="salaryDateStart != null">
+            AND pay_date >= #{salaryDateStart}
+        </if>
+        <if test="salaryDateEnd != null">
+            AND pay_date &lt;= #{salaryDateEnd}
+        </if>
+        GROUP BY employee_id
+        ) salary_stats ON e.employee_id = salary_stats.employee_id
+        LEFT JOIN (
+        SELECT
+        pe.employee_id,
+        COUNT(*) as project_count,
+        COUNT(CASE WHEN p.status = 'ACTIVE' THEN 1 END) as active_projects,
+        COUNT(CASE WHEN p.status = 'COMPLETED' THEN 1 END) as completed_projects,
+        AVG(pe.contribution_rate) as avg_contribution_rate
+        FROM project_employee pe
+        JOIN project p ON pe.project_id = p.project_id
+        GROUP BY pe.employee_id
+        ) project_stats ON e.employee_id = project_stats.employee_id
+        LEFT JOIN (
+        SELECT
+        e2.employee_id,
+        RANK() OVER (PARTITION BY e2.department_id ORDER BY IFNULL(s2.avg_salary, 0) DESC) as salary_rank_in_dept,
+        RANK() OVER (PARTITION BY e2.department_id ORDER BY
+        CASE
+        WHEN e2.performance_rating = 'EXCELLENT' THEN 4
+        WHEN e2.performance_rating = 'GOOD' THEN 3
+        WHEN e2.performance_rating = 'AVERAGE' THEN 2
+        WHEN e2.performance_rating = 'POOR' THEN 1
+        ELSE 0
+        END DESC
+        ) as performance_rank_in_dept
+        FROM employee e2
+        LEFT JOIN (
+        SELECT employee_id, AVG(net_salary) as avg_salary
+        FROM salary
+        WHERE status = 'PAID'
+        GROUP BY employee_id
+        ) s2 ON e2.employee_id = s2.employee_id
+        ) dept_ranking ON e.employee_id = dept_ranking.employee_id
+        <where>
+            <if test="employeeId != null">
+                AND e.employee_id = #{employeeId}
+            </if>
+            <if test="departmentId != null">
+                AND e.department_id = #{departmentId}
+            </if>
+            <if test="status != null and status != ''">
+                AND e.status = #{status}
+            </if>
+            <if test="performanceRating != null and performanceRating != ''">
+                AND e.performance_rating = #{performanceRating}
+            </if>
+            <if test="position != null and position != ''">
+                AND e.position LIKE CONCAT('%', #{position}, '%')
+            </if>
+        </where>
+        ORDER BY comprehensive_score DESC, salary_stats.avg_salary DESC
+    </select>
+
+    <!-- 系统使用统计报表 -->
+    <select id="selectSystemUsageReport" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.ReportQueryDTO" resultType="map">
+        SELECT 'DATABASE_STATISTICS'                                                                      as report_type,
+               'SYSTEM'                                                                                   as report_category,
+
+               -- 数据表统计
+               (SELECT COUNT(*) FROM employee)                                                            as total_employees,
+               (SELECT COUNT(*) FROM department)                                                          as total_departments,
+               (SELECT COUNT(*) FROM project)                                                             as total_projects,
+               (SELECT COUNT(*) FROM orders)                                                              as total_orders,
+               (SELECT COUNT(*) FROM salary)                                                              as total_salary_records,
+
+               -- 数据增长趋势（最近30天）
+               (SELECT COUNT(*) FROM employee WHERE created_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) as new_employees_30d,
+               (SELECT COUNT(*) FROM project WHERE created_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))  as new_projects_30d,
+               (SELECT COUNT(*) FROM orders WHERE created_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))   as new_orders_30d,
+
+               -- 状态分布
+               (SELECT COUNT(*) FROM employee WHERE status = 'ACTIVE')                                    as active_employees,
+               (SELECT COUNT(*) FROM project WHERE status = 'ACTIVE')                                     as active_projects,
+               (SELECT COUNT(*) FROM orders WHERE status NOT IN ('CANCELLED'))                            as valid_orders,
+
+               -- 系统负载指标
+               (SELECT AVG(LENGTH(description)) FROM project WHERE description IS NOT NULL)               as avg_project_desc_length,
+               (SELECT MAX(final_amount) FROM orders)                                                     as max_order_amount,
+               (SELECT COUNT(DISTINCT customer_phone) FROM orders)                                        as unique_customers,
+
+               -- 数据质量指标
+               (SELECT COUNT(*) FROM employee WHERE email IS NULL OR email = '')                          as employees_missing_email,
+               (SELECT COUNT(*) FROM project WHERE description IS NULL OR description = '')               as projects_missing_desc,
+               (SELECT COUNT(*) FROM orders WHERE tracking_number IS NULL OR tracking_number = '')        as orders_missing_tracking,
+
+               -- 报表生成时间
+               NOW()                                                                                      as report_generated_time,
+               CURDATE()                                                                                  as report_date
+    </select>
+</mapper>

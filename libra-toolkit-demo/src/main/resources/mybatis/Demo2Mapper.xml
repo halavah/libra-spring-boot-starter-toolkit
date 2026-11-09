@@ -1,0 +1,508 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.Demo2Mapper">
+    <!-- ================================ 高级动态SQL示例 ================================ -->
+
+    <!-- 多表关联动态查询 -->
+    <select id="selectUsersWithDepartmentAndRole" parameterType="map" resultType="map">
+        SELECT
+        u.id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        d.name as department_name,
+        r.name as role_name
+        FROM users u
+        <if test="includeDepartment != null and includeDepartment == true">
+            LEFT JOIN departments d ON u.department_id = d.id
+        </if>
+        <if test="includeRole != null and includeRole == true">
+            LEFT JOIN user_roles ur ON u.id = ur.user_id
+            LEFT JOIN roles r ON ur.role_id = r.id
+        </if>
+        <where>
+            u.status = 'active'
+            <if test="departmentIds != null and departmentIds.size() > 0">
+                AND u.department_id IN
+                <foreach collection="departmentIds" item="deptId" open="(" close=")" separator=",">
+                    #{deptId}
+                </foreach>
+            </if>
+            <if test="roleIds != null and roleIds.size() > 0">
+                AND ur.role_id IN
+                <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
+                    #{roleId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- 复杂条件组合查询 -->
+    <select id="selectUsersAdvancedSearch" parameterType="map" resultType="map">
+        SELECT * FROM users
+        <where>
+            <if test="basicSearch != null">
+                <if test="basicSearch.keyword != null and basicSearch.keyword != ''">
+                    AND (
+                    name LIKE CONCAT('%', #{basicSearch.keyword}, '%')
+                    OR email LIKE CONCAT('%', #{basicSearch.keyword}, '%')
+                    OR phone LIKE CONCAT('%', #{basicSearch.keyword}, '%')
+                    )
+                </if>
+            </if>
+
+            <if test="filters != null">
+                <if test="filters.ageRange != null">
+                    <if test="filters.ageRange.min != null">
+                        AND age >= #{filters.ageRange.min}
+                    </if>
+                    <if test="filters.ageRange.max != null">
+                        AND age &lt;= #{filters.ageRange.max}
+                    </if>
+                </if>
+
+                <if test="filters.dateRange != null">
+                    <if test="filters.dateRange.startDate != null">
+                        AND create_time >= #{filters.dateRange.startDate}
+                    </if>
+                    <if test="filters.dateRange.endDate != null">
+                        AND create_time &lt;= #{filters.dateRange.endDate}
+                    </if>
+                </if>
+
+                <if test="filters.statuses != null and filters.statuses.size() > 0">
+                    AND status IN
+                    <foreach collection="filters.statuses" item="status" open="(" close=")" separator=",">
+                        #{status}
+                    </foreach>
+                </if>
+            </if>
+
+            <if test="excludeIds != null and excludeIds.size() > 0">
+                AND id NOT IN
+                <foreach collection="excludeIds" item="excludeId" open="(" close=")" separator=",">
+                    #{excludeId}
+                </foreach>
+            </if>
+        </where>
+
+        <if test="sorting != null and sorting.size() > 0">
+            ORDER BY
+            <foreach collection="sorting" item="sort" separator=",">
+                <choose>
+                    <when test="sort.field == 'name'">
+                        name ${sort.direction}
+                    </when>
+                    <when test="sort.field == 'age'">
+                        age ${sort.direction}
+                    </when>
+                    <when test="sort.field == 'createTime'">
+                        create_time ${sort.direction}
+                    </when>
+                    <otherwise>
+                        id ${sort.direction}
+                    </otherwise>
+                </choose>
+            </foreach>
+        </if>
+    </select>
+
+    <!-- 动态分组统计 -->
+    <select id="getUserStatistics" parameterType="map" resultType="map">
+        SELECT
+        <choose>
+            <when test="groupBy == 'department'">
+                department_id as group_key,
+                d.name as group_name,
+            </when>
+            <when test="groupBy == 'status'">
+                status as group_key,
+                status as group_name,
+            </when>
+            <when test="groupBy == 'age_range'">
+                CASE
+                WHEN age
+                &lt;
+                25 THEN 'young'
+                WHEN age >= 25 AND age
+                &lt;
+                40 THEN 'middle'
+                ELSE 'senior'
+                END as group_key,
+                CASE
+                WHEN age
+                &lt;
+                25 THEN '25岁以下'
+                WHEN age >= 25 AND age
+                &lt;
+                40 THEN '25-40岁'
+                ELSE '40岁以上'
+                END as group_name,
+            </when>
+            <otherwise>
+                'all' as group_key,
+                '全部' as group_name,
+            </otherwise>
+        </choose>
+        COUNT(*) as user_count,
+        AVG(age) as avg_age,
+        MIN(create_time) as earliest_create_time,
+        MAX(create_time) as latest_create_time
+        FROM users u
+        <if test="groupBy == 'department'">
+            LEFT JOIN departments d ON u.department_id = d.id
+        </if>
+        <where>
+            <if test="status != null">
+                AND u.status = #{status}
+            </if>
+            <if test="dateRange != null">
+                <if test="dateRange.startDate != null">
+                    AND u.create_time >= #{dateRange.startDate}
+                </if>
+                <if test="dateRange.endDate != null">
+                    AND u.create_time &lt;= #{dateRange.endDate}
+                </if>
+            </if>
+        </where>
+        <if test="groupBy != null and groupBy != 'all'">
+            <choose>
+                <when test="groupBy == 'department'">
+                    GROUP BY u.department_id, d.name
+                </when>
+                <when test="groupBy == 'status'">
+                    GROUP BY u.status
+                </when>
+                <when test="groupBy == 'age_range'">
+                    GROUP BY
+                    CASE
+                    WHEN age
+                    &lt;
+                    25 THEN 'young'
+                    WHEN age >= 25 AND age
+                    &lt;
+                    40 THEN 'middle'
+                    ELSE 'senior'
+                    END
+                </when>
+            </choose>
+        </if>
+        ORDER BY user_count DESC
+    </select>
+
+    <!-- 批量操作 - 条件批量更新 -->
+    <update id="batchUpdateUserStatus" parameterType="map">
+        UPDATE users SET
+        status = #{newStatus},
+        update_time = NOW()
+        <where>
+            <if test="userIds != null and userIds.size() > 0">
+                AND id IN
+                <foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+                    #{userId}
+                </foreach>
+            </if>
+            <if test="conditions != null">
+                <if test="conditions.oldStatus != null">
+                    AND status = #{conditions.oldStatus}
+                </if>
+                <if test="conditions.departmentId != null">
+                    AND department_id = #{conditions.departmentId}
+                </if>
+                <if test="conditions.ageRange != null">
+                    <if test="conditions.ageRange.min != null">
+                        AND age >= #{conditions.ageRange.min}
+                    </if>
+                    <if test="conditions.ageRange.max != null">
+                        AND age &lt;= #{conditions.ageRange.max}
+                    </if>
+                </if>
+            </if>
+        </where>
+    </update>
+
+    <!-- 批量操作 - 条件批量删除 -->
+    <delete id="batchDeleteUsers" parameterType="map">
+        DELETE FROM users
+        <where>
+            <if test="userIds != null and userIds.size() > 0">
+                AND id IN
+                <foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+                    #{userId}
+                </foreach>
+            </if>
+            <if test="conditions != null">
+                <if test="conditions.status != null">
+                    AND status = #{conditions.status}
+                </if>
+                <if test="conditions.inactiveDays != null">
+                    AND last_login_time &lt; DATE_SUB(NOW(), INTERVAL #{conditions.inactiveDays} DAY)
+                </if>
+                <if test="conditions.departmentIds != null and conditions.departmentIds.size() > 0">
+                    AND department_id IN
+                    <foreach collection="conditions.departmentIds" item="deptId" open="(" close=")" separator=",">
+                        #{deptId}
+                    </foreach>
+                </if>
+            </if>
+        </where>
+    </delete>
+
+    <!-- 动态插入 - 根据条件插入不同字段 -->
+    <insert id="insertUserDynamic" parameterType="map">
+        INSERT INTO users
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null">
+                name,
+            </if>
+            <if test="age != null">
+                age,
+            </if>
+            <if test="email != null">
+                email,
+            </if>
+            <if test="phone != null">
+                phone,
+            </if>
+            <if test="departmentId != null">
+                department_id,
+            </if>
+            <if test="status != null">
+                status,
+            </if>
+            <if test="createTime != null">
+                create_time,
+            </if>
+            <if test="metadata != null">
+                metadata,
+            </if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="name != null">
+                #{name},
+            </if>
+            <if test="age != null">
+                #{age},
+            </if>
+            <if test="email != null">
+                #{email},
+            </if>
+            <if test="phone != null">
+                #{phone},
+            </if>
+            <if test="departmentId != null">
+                #{departmentId},
+            </if>
+            <if test="status != null">
+                #{status},
+            </if>
+            <if test="createTime != null">
+                #{createTime},
+            </if>
+            <if test="metadata != null">
+                #{metadata},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 复杂子查询 -->
+    <select id="selectUsersWithSubquery" parameterType="map" resultType="map">
+        SELECT u.*,
+        (SELECT COUNT(*) FROM user_roles ur WHERE ur.user_id = u.id) as role_count,
+        (SELECT d.name FROM departments d WHERE d.id = u.department_id) as department_name
+        FROM users u
+        <where>
+            <if test="hasRoles != null and hasRoles == true">
+                AND EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id)
+            </if>
+            <if test="hasRoles != null and hasRoles == false">
+                AND NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id)
+            </if>
+            <if test="minRoleCount != null">
+                AND (SELECT COUNT(*) FROM user_roles ur WHERE ur.user_id = u.id) >= #{minRoleCount}
+            </if>
+            <if test="departmentName != null and departmentName != ''">
+                AND EXISTS (
+                SELECT 1 FROM departments d
+                WHERE d.id = u.department_id
+                AND d.name LIKE CONCAT('%', #{departmentName}, '%')
+                )
+            </if>
+        </where>
+    </select>
+
+    <!-- 动态UNION查询 -->
+    <select id="selectUsersUnion" parameterType="map" resultType="map">
+        <if test="includeActive != null and includeActive == true">
+            SELECT 'active' as source, u.* FROM users u WHERE u.status = 'active'
+            <if test="activeFilters != null">
+                ''
+                <if test="activeFilters.departmentId != null">
+                    AND u.department_id = #{activeFilters.departmentId}
+                </if>
+            </if>
+        </if>
+
+        <if test="includeActive != null and includeActive == true and includeInactive != null and includeInactive == true">
+            UNION ALL
+        </if>
+
+        <if test="includeInactive != null and includeInactive == true">
+            SELECT 'inactive' as source, u.* FROM users u WHERE u.status = 'inactive'
+            <if test="inactiveFilters != null">
+                <if test="inactiveFilters.daysSinceLastLogin != null">
+                    AND u.last_login_time &lt; DATE_SUB(NOW(), INTERVAL #{inactiveFilters.daysSinceLastLogin} DAY)
+                </if>
+            </if>
+        </if>
+
+        <if test="includeActive != null and includeActive == true and includeArchived != null and includeArchived == true">
+            UNION ALL
+        </if>
+        <if test="includeInactive != null and includeInactive == true and includeArchived != null and includeArchived == true">
+            UNION ALL
+        </if>
+
+        <if test="includeArchived != null and includeArchived == true">
+            SELECT 'archived' as source, u.* FROM user_archive u WHERE 1=1
+            <if test="archivedFilters != null">
+                <if test="archivedFilters.archiveDate != null">
+                    AND u.archive_date >= #{archivedFilters.archiveDate}
+                </if>
+            </if>
+        </if>
+
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 动态CTE (Common Table Expression) -->
+    <select id="selectUsersWithCTE" parameterType="map" resultType="map">
+        WITH user_stats AS (
+        SELECT
+        u.id,
+        u.name,
+        u.department_id,
+        COUNT(ur.role_id) as role_count,
+        MAX(ul.login_time) as last_login
+        FROM users u
+        LEFT JOIN user_roles ur ON u.id = ur.user_id
+        LEFT JOIN user_logins ul ON u.id = ul.user_id
+        <where>
+            <if test="status != null">
+                AND u.status = #{status}
+            </if>
+            <if test="departmentIds != null and departmentIds.size() > 0">
+                AND u.department_id IN
+                <foreach collection="departmentIds" item="deptId" open="(" close=")" separator=",">
+                    #{deptId}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY u.id, u.name, u.department_id
+        )
+        SELECT
+        us.*,
+        d.name as department_name,
+        CASE
+        WHEN us.last_login > DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 'active'
+        WHEN us.last_login > DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 'inactive'
+        ELSE 'dormant'
+        END as activity_status
+        FROM user_stats us
+        LEFT JOIN departments d ON us.department_id = d.id
+        <where>
+            <if test="minRoleCount != null">
+                AND us.role_count >= #{minRoleCount}
+            </if>
+            <if test="activityStatus != null">
+                <choose>
+                    <when test="activityStatus == 'active'">
+                        AND us.last_login > DATE_SUB(NOW(), INTERVAL 7 DAY)
+                    </when>
+                    <when test="activityStatus == 'inactive'">
+                        AND us.last_login > DATE_SUB(NOW(), INTERVAL 30 DAY)
+                        AND us.last_login &lt;= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                    </when>
+                    <when test="activityStatus == 'dormant'">
+                        AND (us.last_login IS NULL OR us.last_login &lt;= DATE_SUB(NOW(), INTERVAL 30 DAY))
+                    </when>
+                </choose>
+            </if>
+        </where>
+        ORDER BY us.role_count DESC, us.last_login DESC
+    </select>
+
+    <!-- 动态窗口函数查询 -->
+    <select id="selectUsersWithRanking" parameterType="map" resultType="map">
+        SELECT
+        u.*,
+        ROW_NUMBER() OVER (
+        <choose>
+            <when test="partitionBy == 'department'">
+                PARTITION BY u.department_id
+            </when>
+            <when test="partitionBy == 'status'">
+                PARTITION BY u.status
+            </when>
+        </choose>
+        ORDER BY
+        <choose>
+            <when test="orderBy == 'age'">
+                u.age DESC
+            </when>
+            <when test="orderBy == 'createTime'">
+                u.create_time DESC
+            </when>
+            <otherwise>
+                u.id
+            </otherwise>
+        </choose>
+        ) as row_num,
+        RANK() OVER (
+        <if test="partitionBy != null">
+            <choose>
+                <when test="partitionBy == 'department'">
+                    PARTITION BY u.department_id
+                </when>
+                <when test="partitionBy == 'status'">
+                    PARTITION BY u.status
+                </when>
+            </choose>
+        </if>
+        ORDER BY u.age DESC
+        ) as age_rank
+        FROM users u
+        <where>
+            <if test="status != null">
+                AND u.status = #{status}
+            </if>
+            <if test="departmentIds != null and departmentIds.size() > 0">
+                AND u.department_id IN
+                <foreach collection="departmentIds" item="deptId" open="(" close=")" separator=",">
+                    #{deptId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- 动态JSON查询 (适用于支持JSON的数据库) -->
+    <select id="selectUsersWithJsonQuery" parameterType="map" resultType="map">
+        SELECT
+        u.*,
+        JSON_EXTRACT(u.metadata, '$.preferences') as preferences,
+        JSON_EXTRACT(u.metadata, '$.settings') as settings
+        FROM users u
+        <where>
+            <if test="jsonFilters != null">
+                <if test="jsonFilters.preference != null">
+                    AND JSON_EXTRACT(u.metadata, '$.preferences.theme') = #{jsonFilters.preference}
+                </if>
+                <if test="jsonFilters.settingKey != null and jsonFilters.settingValue != null">
+                    AND JSON_EXTRACT(u.metadata, CONCAT('$.settings.', #{jsonFilters.settingKey})) = #{jsonFilters.settingValue}
+                </if>
+                <if test="jsonFilters.hasPreferences != null and jsonFilters.hasPreferences == true">
+                    AND JSON_EXTRACT(u.metadata, '$.preferences') IS NOT NULL
+                </if>
+            </if>
+        </where>
+    </select>
+</mapper>

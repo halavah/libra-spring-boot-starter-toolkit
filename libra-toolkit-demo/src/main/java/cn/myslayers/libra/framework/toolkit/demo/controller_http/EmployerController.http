@@ -1,0 +1,34 @@
+### 1. 获取所有雇主 (预期返回2条记录)
+GET http://localhost:5176/employer/list
+Content-Type: application/json
+
+### 2. 获取单个雇主 (获取预置的TechCorp)
+GET http://localhost:5176/employer/detail?id=emp-001
+Content-Type: application/json
+
+### 3. 创建一个新雇主 "Innovate LLC"
+POST http://localhost:5176/employer/create
+Content-Type: application/json
+
+{
+  "name": "Innovate LLC",
+  "industry": "AI Research"
+}
+
+### 4. 更新预置的雇主 "FinanceInc" 的信息
+POST http://localhost:5176/employer/update
+Content-Type: application/json
+
+{
+  "id": "emp-002",
+  "name": "Finance & Global Partners",
+  "industry": "Global Finance"
+}
+
+### 5. 删除一个雇主
+POST http://localhost:5176/employer/delete
+Content-Type: application/json
+
+{
+  "id": "emp-001"
+}

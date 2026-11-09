@@ -1,0 +1,539 @@
+### =============================================
+### 测试接口集合
+### Controller: TestController.java
+### 描述: 提供DatabaseUtil和数据查询功能的测试接口
+### =============================================
+###
+### 使用前准备:
+### 1. 确保服务运行在 http://localhost:9931/libra-toolkit
+### 2. 确保数据库已初始化（执行 sql/init-database.sql）
+### 3. 确保数据库连接配置正确（application-dev.yml）
+### =============================================
+
+### 环境变量配置
+@baseUrl = http://localhost:9931/libra-toolkit
+@contentType = application/json
+
+### =============================================
+### 1. 基础健康检查 - GET请求
+### @GetMapping("/test/demo1")
+### =============================================
+# 测试服务是否正常运行
+# 预期返回: "测试成功！"
+GET {{baseUrl}}/test/demo1
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": "测试成功！",
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 2. POST请求参数测试 - 接收JSON参数
+### @PostMapping("/test/demo2")
+### =============================================
+# 测试POST请求和JSON参数接收
+# 参数会被原样返回（JSON字符串格式）
+POST {{baseUrl}}/test/demo2
+Content-Type: {{contentType}}
+
+{
+  "name": "张三",
+  "age": 25,
+  "department": "研发部",
+  "skills": ["Java", "Spring Boot", "MySQL"]
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": "{\"name\":\"张三\",\"age\":25,\"department\":\"研发部\",\"skills\":[\"Java\",\"Spring Boot\",\"MySQL\"]}",
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 3. POST请求 - 空对象测试
+### @PostMapping("/test/demo2")
+### =============================================
+# 测试发送空对象
+POST {{baseUrl}}/test/demo2
+Content-Type: {{contentType}}
+
+{}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": "{}",
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 4. POST请求 - 复杂嵌套对象
+### @PostMapping("/test/demo2")
+### =============================================
+# 测试复杂嵌套的JSON对象
+POST {{baseUrl}}/test/demo2
+Content-Type: {{contentType}}
+
+{
+  "user": {
+    "id": "U001",
+    "name": "李四",
+    "profile": {
+      "email": "lisi@example.com",
+      "phone": "13800138000"
+    }
+  },
+  "orders": [
+    {
+      "orderId": "ORD001",
+      "amount": 1500.00
+    },
+    {
+      "orderId": "ORD002",
+      "amount": 2500.00
+    }
+  ]
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": "{\"user\":{\"id\":\"U001\",\"name\":\"李四\",\"profile\":{...}},...}",
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 5. 数据库查询测试 - 查询所有订单
+### @GetMapping("/test/demo3")
+### =============================================
+# 使用Service层查询orders表的所有数据
+# 注意: 这个接口查询的是orders表（需要先执行数据库初始化脚本）
+GET {{baseUrl}}/test/demo3
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": [
+#    {
+#      "id": 1,
+#      "order_no": "ORD20241108001",
+#      "customer_name": "客户张三",
+#      "total_amount": 1580.00,
+#      "status": "DELIVERED"
+#    },
+#    {
+#      "id": 2,
+#      "order_no": "ORD20241108002",
+#      "customer_name": "客户李四",
+#      "total_amount": 2680.00,
+#      "status": "SHIPPED"
+#    }
+#  ],
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 6. 条件查询 - 按状态查询订单
+### @PostMapping("/test/demo4")
+### =============================================
+# 根据条件查询订单列表
+# 支持多种查询条件组合
+POST {{baseUrl}}/test/demo4
+Content-Type: {{contentType}}
+
+{
+  "status": "DELIVERED"
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": [
+#    {
+#      "id": 1,
+#      "order_no": "ORD20241108001",
+#      "customer_name": "客户张三",
+#      "status": "DELIVERED",
+#      "actual_amount": 1500.00
+#    }
+#  ],
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 7. 条件查询 - 按客户ID查询
+### @PostMapping("/test/demo4")
+### =============================================
+# 查询指定客户的订单
+POST {{baseUrl}}/test/demo4
+Content-Type: {{contentType}}
+
+{
+  "customer_id": 1001
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": [
+#    {
+#      "id": 1,
+#      "order_no": "ORD20241108001",
+#      "customer_id": 1001,
+#      "customer_name": "客户张三"
+#    }
+#  ],
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 8. 条件查询 - 多条件组合
+### @PostMapping("/test/demo4")
+### =============================================
+# 使用多个条件组合查询
+POST {{baseUrl}}/test/demo4
+Content-Type: {{contentType}}
+
+{
+  "status": "SHIPPED",
+  "payment_status": "PAID"
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": [
+#    {
+#      "id": 2,
+#      "order_no": "ORD20241108002",
+#      "status": "SHIPPED",
+#      "payment_status": "PAID"
+#    }
+#  ],
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 9. 条件查询 - 金额范围查询
+### @PostMapping("/test/demo4")
+### =============================================
+# 查询指定金额范围的订单
+POST {{baseUrl}}/test/demo4
+Content-Type: {{contentType}}
+
+{
+  "min_amount": 2000.00,
+  "max_amount": 5000.00
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": [
+#    {
+#      "id": 2,
+#      "order_no": "ORD20241108002",
+#      "actual_amount": 2500.00
+#    }
+#  ],
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 10. 分页查询 - 第一页
+### @PostMapping("/test/demo4_page")
+### =============================================
+# 分页查询订单列表（第1页，每页10条）
+POST {{baseUrl}}/test/demo4_page?pageNum=1&pageSize=10
+Content-Type: {{contentType}}
+
+{
+  "status": "DELIVERED"
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": {
+#    "records": [
+#      {
+#        "id": 1,
+#        "order_no": "ORD20241108001",
+#        "status": "DELIVERED"
+#      }
+#    ],
+#    "total": 1,
+#    "size": 10,
+#    "current": 1,
+#    "pages": 1
+#  },
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 11. 分页查询 - 第二页（自定义每页数量）
+### @PostMapping("/test/demo4_page")
+### =============================================
+# 分页查询（第2页，每页5条）
+POST {{baseUrl}}/test/demo4_page?pageNum=2&pageSize=5
+Content-Type: {{contentType}}
+
+{
+  "all": true
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": {
+#    "records": [],
+#    "total": 3,
+#    "size": 5,
+#    "current": 2,
+#    "pages": 1
+#  },
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 12. 分页查询 - 默认分页参数
+### @PostMapping("/test/demo4_page")
+### =============================================
+# 不指定分页参数，使用默认值（第1页，每页10条）
+POST {{baseUrl}}/test/demo4_page
+Content-Type: {{contentType}}
+
+{
+  "payment_status": "PAID"
+}
+
+### 响应示例
+#{
+#  "success": true,
+#  "message": "",
+#  "code": 0,
+#  "result": {
+#    "records": [...],
+#    "total": 2,
+#    "size": 10,
+#    "current": 1,
+#    "pages": 1
+#  },
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 13. 空参数测试（预期异常）
+### @PostMapping("/test/demo4")
+### =============================================
+# 测试发送空参数，应该抛出异常
+POST {{baseUrl}}/test/demo4
+Content-Type: {{contentType}}
+
+### 响应示例（预期400或500错误）
+#{
+#  "success": false,
+#  "message": "参数不能为空",
+#  "code": 500,
+#  "result": null,
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 14. 空对象参数测试（预期异常）
+### @PostMapping("/test/demo4")
+### =============================================
+# 测试发送空对象，应该抛出异常
+POST {{baseUrl}}/test/demo4
+Content-Type: {{contentType}}
+
+{}
+
+### 响应示例（预期400或500错误）
+#{
+#  "success": false,
+#  "message": "参数不能为空",
+#  "code": 500,
+#  "result": null,
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 15. 分页查询空参数测试（预期异常）
+### @PostMapping("/test/demo4_page")
+### =============================================
+# 测试分页查询时发送空参数
+POST {{baseUrl}}/test/demo4_page?pageNum=1&pageSize=10
+Content-Type: {{contentType}}
+
+### 响应示例（预期400或500错误）
+#{
+#  "success": false,
+#  "message": "参数不能为空",
+#  "code": 500,
+#  "result": null,
+#  "timestamp": 1699437000000
+#}
+
+### =============================================
+### 测试场景说明
+### =============================================
+###
+### 基础接口测试:
+### ✅ 测试1: GET请求健康检查
+### ✅ 测试2-4: POST请求JSON参数接收（简单、空、复杂嵌套）
+###
+### 数据查询测试:
+### ✅ 测试5: 查询所有数据（demo3）
+### ✅ 测试6-9: 条件查询（单条件、多条件、范围查询）
+### ✅ 测试10-12: 分页查询（不同页码、页大小、默认参数）
+###
+### 异常处理测试:
+### ✅ 测试13-15: 参数验证（空参数、空对象）
+###
+### 数据库表结构:
+### - orders (订单表)
+###   - id: 订单ID
+###   - order_no: 订单号
+###   - customer_id: 客户ID
+###   - customer_name: 客户姓名
+###   - total_amount: 订单总额
+###   - actual_amount: 实付金额
+###   - status: 订单状态
+###   - payment_status: 支付状态
+###   - order_date: 下单时间
+###
+### 支持的查询条件:
+### - status: 订单状态（PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED）
+### - payment_status: 支付状态（UNPAID, PAID, REFUNDED）
+### - customer_id: 客户ID
+### - min_amount: 最小金额
+### - max_amount: 最大金额
+### - all: 查询所有（true）
+###
+### 分页参数:
+### - pageNum: 页码（默认1）
+### - pageSize: 每页数量（默认10）
+###
+### =============================================
+
+### =============================================
+### 快速测试用例组合
+### =============================================
+
+### 完整流程测试: 健康检查 → 参数测试 → 查询测试 → 分页查询
+# 1. 健康检查
+GET {{baseUrl}}/test/demo1
+
+###
+
+# 2. 参数测试
+POST {{baseUrl}}/test/demo2
+Content-Type: {{contentType}}
+
+{
+  "test": "quick test",
+  "timestamp": "2025-11-08"
+}
+
+###
+
+# 3. 查询所有订单
+GET {{baseUrl}}/test/demo3
+
+###
+
+# 4. 条件查询
+POST {{baseUrl}}/test/demo4
+Content-Type: {{contentType}}
+
+{
+  "status": "DELIVERED"
+}
+
+###
+
+# 5. 分页查询
+POST {{baseUrl}}/test/demo4_page?pageNum=1&pageSize=5
+Content-Type: {{contentType}}
+
+{
+  "payment_status": "PAID"
+}
+
+### =============================================
+### 附录：cURL 命令示例
+### =============================================
+###
+### 健康检查:
+### curl "http://localhost:9931/libra-toolkit/test/demo1"
+###
+### POST参数测试:
+### curl -X POST "http://localhost:9931/libra-toolkit/test/demo2" \
+###   -H "Content-Type: application/json" \
+###   -d '{"name":"张三","age":25}'
+###
+### 查询所有订单:
+### curl "http://localhost:9931/libra-toolkit/test/demo3"
+###
+### 条件查询:
+### curl -X POST "http://localhost:9931/libra-toolkit/test/demo4" \
+###   -H "Content-Type: application/json" \
+###   -d '{"status":"DELIVERED"}'
+###
+### 分页查询:
+### curl -X POST "http://localhost:9931/libra-toolkit/test/demo4_page?pageNum=1&pageSize=10" \
+###   -H "Content-Type: application/json" \
+###   -d '{"status":"PAID"}'
+###
+### =============================================
+
+### =============================================
+### 开发调试技巧
+### =============================================
+###
+### 1. 使用环境变量
+###    可以在IDEA或VSCode的HTTP Client中定义环境变量
+###    例如: @baseUrl = http://localhost:9931/libra-toolkit
+###
+### 2. 查看响应详情
+###    在IDEA中按Ctrl+点击请求，可以查看完整的请求和响应
+###
+### 3. 复制为cURL
+###    在请求上右键 → Copy as cURL，可以复制为cURL命令
+###
+### 4. 保存响应
+###    响应会自动保存在 .idea/httpRequests/ 目录
+###
+### 5. 性能测试
+###    可以使用 ### 分隔符，连续发送多个请求进行性能测试
+###
+### 6. 数据库准备
+###    确保先执行 sql/init-database.sql 初始化测试数据
+###
+### =============================================

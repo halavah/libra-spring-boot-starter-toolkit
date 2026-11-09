@@ -1,0 +1,43 @@
+### 1. 注册设备 SENSOR-001
+POST http://localhost:8082/api/iot/devices/register
+Content-Type: application/json
+
+{
+  "deviceId": "SENSOR-001",
+  "type": "THERMOSTAT",
+  "location": "Warehouse-1"
+}
+
+### 2. (正常) 上报遥测数据
+POST http://localhost:8082/api/iot/telemetry
+Content-Type: application/json
+
+{
+  "deviceId": "SENSOR-001",
+  "temperature": 25.5,
+  "humidity": 45.2,
+  "battery": 98.0
+}
+
+### 3. (告警) 上报高温数据
+POST http://localhost:8082/api/iot/telemetry
+Content-Type: application/json
+
+{
+  "deviceId": "SENSOR-001",
+  "temperature": 85.0,
+  "humidity": 10.0,
+  "battery": 95.0
+}
+
+### 4. 模拟随机设备上线
+POST http://localhost:8082/api/iot/simulate
+
+### 5. 查看实时监控大屏 (Redis Data)
+GET http://localhost:8082/api/iot/dashboard
+
+### 6. 查看设备列表 (DB)
+GET http://localhost:8082/api/iot/devices
+
+### 7. 查看告警记录 (DB)
+GET http://localhost:8082/api/iot/alarms

@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 部门映射文件 - 嵌套对象 + 批量操作 -->
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.DepartmentMapper">
+    <!-- 基础查询 - 根据ID查询部门 -->
+    <select id="selectDepartmentById" parameterType="java.lang.Integer" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Department">
+        SELECT id,
+               name,
+               code,
+               parent_id,
+               description,
+               manager_id,
+               location,
+               level,
+               status,
+               establish_date,
+               extra_info,
+               created_time,
+               updated_time
+        FROM t_department
+        WHERE id = #{id}
+    </select>
+
+    <!-- 层级查询 - 查询所有子部门 -->
+    <select id="selectChildDepartments" parameterType="java.lang.Integer" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Department">
+        WITH RECURSIVE dept_tree AS (
+            -- 初始查询：查找指定父部门
+            SELECT id,
+                   name,
+                   code,
+                   parent_id,
+                   level,
+                   status,
+                   manager_id,
+                   location,
+                   establish_date
+            FROM t_department
+            WHERE parent_id = #{parentId}
+
+            UNION ALL
+
+            -- 递归查询：查找子部门的子部门
+            SELECT d.id,
+                   d.name,
+                   d.code,
+                   d.parent_id,
+                   d.level,
+                   d.status,
+                   d.manager_id,
+                   d.location,
+                   d.establish_date
+            FROM t_department d
+                     INNER JOIN dept_tree dt ON d.parent_id = dt.id)
+        SELECT *
+        FROM dept_tree
+        ORDER BY level, name
+    </select>
+
+    <!-- 复杂条件查询 - 支持层级和扩展条件 -->
+    <select id="selectDepartmentsByCondition" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.DepartmentManageDTO" resultType="cn.myslayers.libra.framework.toolkit.demo.model.vo.DepartmentSummaryVO">
+        SELECT
+        d.id,
+        d.name,
+        d.code,
+        d.parent_id,
+        d.description,
+        d.manager_id,
+        d.location,
+        d.level,
+        d.status,
+        d.establish_date,
+        d.extra_info,
+        e.name as manager_name,
+        (SELECT COUNT(*) FROM t_employee WHERE department_id = d.id) as employee_count
+        FROM t_department d
+        LEFT JOIN t_employee e ON d.manager_id = e.id
+        <where>
+            <if test="name != null and name != ''">
+                AND d.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="code != null and code != ''">
+                AND d.code = #{code}
+            </if>
+            <if test="parentId != null">
+                AND d.parent_id = #{parentId}
+            </if>
+            <if test="managerId != null">
+                AND d.manager_id = #{managerId}
+            </if>
+            <if test="location != null and location != ''">
+                AND d.location LIKE CONCAT('%', #{location}, '%')
+            </if>
+            <if test="level != null">
+                AND d.level = #{level}
+            </if>
+            <if test="status != null and status != ''">
+                AND d.status = #{status}
+            </if>
+            <if test="establishDateStart != null">
+                AND d.establish_date >= #{establishDateStart}
+            </if>
+            <if test="establishDateEnd != null">
+                AND d.establish_date                                                 <![CDATA[<=]]> #{establishDateEnd}
+            </if>
+        </where>
+        ORDER BY d.level, d.name
+    </select>
+
+    <!-- 批量操作 - 批量创建部门 -->
+    <insert id="batchInsertDepartments" parameterType="java.util.List">
+        INSERT INTO t_department (
+        name, code, parent_id, description, manager_id,
+        location, level, status, establish_date, extra_info,
+        created_time, updated_time
+        ) VALUES
+        <foreach collection="departments" item="dept" separator=",">
+            (
+            #{dept.name},
+            #{dept.code},
+            #{dept.parentId},
+            #{dept.description},
+            #{dept.managerId},
+            #{dept.location},
+            #{dept.level},
+            COALESCE(#{dept.status,jdbcType=VARCHAR}, 'ACTIVE'),
+            #{dept.establishDate},
+            <if test="dept.extraInfo != null">
+                #{dept.extraInfo,jdbcType=VARCHAR},
+            </if>
+            NOW(),
+            NOW()
+            )
+        </foreach>
+    </insert>
+
+    <!-- 批量更新部门状态 -->
+    <update id="batchUpdateDepartmentStatus">
+        UPDATE t_department
+        SET status = #{status}, updated_time = NOW()
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 复杂操作 - 部门移动（包含子部门层级调整） -->
+    <update id="moveDepartmentWithChildren">
+        UPDATE t_department
+        SET
+        parent_id = #{newParentId},
+        level = #{newLevel},
+        updated_time = NOW()
+        WHERE id = #{departmentId}
+
+        <!-- 更新所有子部门的层级 -->
+        UPDATE t_department
+        SET
+        level = level - #{oldLevel} + #{newLevel} + 1,
+        updated_time = NOW()
+        WHERE parent_id = #{departmentId}
+    </update>
+
+    <!-- 统计查询 - 部门统计信息 -->
+    <select id="selectDepartmentStatistics" resultType="cn.myslayers.libra.framework.toolkit.demo.model.vo.DepartmentSummaryVO$DepartmentStatistics">
+        SELECT
+        d.id,
+        d.name,
+        d.code,
+        d.level,
+        d.status,
+        COUNT(e.id) as totalEmployees,
+        COUNT(CASE WHEN e.status = 'ACTIVE' THEN e.id END) as activeEmployees,
+        COUNT(CASE WHEN e.status = 'RESIGNED' THEN e.id END) as resignedEmployees,
+        COUNT(p.id) as projectCount,
+        SUM(e.base_salary) as totalSalary,
+        AVG(e.base_salary) as averageSalary
+        FROM t_department d
+        LEFT JOIN t_employee e ON d.id = e.department_id
+        LEFT JOIN t_project p ON d.id = p.department_id AND p.status IN ('RUNNING', 'COMPLETED')
+        <where>
+            <if test="parentId != null">
+                AND d.parent_id = #{parentId}
+            </if>
+            <if test="level != null">
+                AND d.level = #{level}
+            </if>
+            <if test="status != null and status != ''">
+                AND d.status = #{status}
+            </if>
+        </where>
+        GROUP BY d.id, d.name, d.code, d.level, d.status
+        ORDER BY d.level, d.name
+    </select>
+
+    <!-- 动态SQL - 根据Map条件查询（测试extraInfo字段） -->
+    <select id="selectDepartmentsByExtraInfo" parameterType="java.util.Map" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Department">
+        SELECT
+        id, name, code, extra_info
+        FROM t_department
+        <where>
+            <if test="extraConditions != null and !extraConditions.isEmpty()">
+                <foreach collection="extraConditions" item="value" index="key" separator=" AND ">
+                    JSON_EXTRACT(extra_info, CONCAT('$.', #{key})) = #{value}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- 插入部门 -->
+    <insert id="insertDepartment" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Department">
+        INSERT INTO t_department (name, code, parent_id, description, manager_id,
+                                  location, level, status, establish_date, extra_info,
+                                  created_time, updated_time)
+        VALUES (#{name},
+                #{code},
+                #{parentId},
+                #{description},
+                #{managerId},
+                #{location},
+                #{level},
+                COALESCE(#{status,jdbcType=VARCHAR}, 'ACTIVE'),
+                #{establishDate},
+                <if test="extraInfo != null">
+                    #{extraInfo,jdbcType=VARCHAR},
+                </if>
+                NOW(),
+                NOW())
+    </insert>
+
+    <!-- 更新部门 -->
+    <update id="updateDepartment" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Department">
+        UPDATE t_department
+        <set>
+            <if test="name != null and name != ''">
+                name = #{name},
+            </if>
+            <if test="description != null">
+                description = #{description},
+            </if>
+            <if test="managerId != null">
+                manager_id = #{managerId},
+            </if>
+            <if test="location != null">
+                location = #{location},
+            </if>
+            <if test="status != null and status != ''">
+                status = #{status},
+            </if>
+            <if test="extraInfo != null">
+                extra_info = #{extraInfo,jdbcType=VARCHAR},
+            </if>
+            updated_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除部门（软删除） -->
+    <update id="deleteDepartment" parameterType="java.lang.Integer">
+        UPDATE t_department
+        SET status       = 'DELETED',
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+</mapper>

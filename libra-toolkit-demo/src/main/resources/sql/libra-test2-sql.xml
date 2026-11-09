@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 综合测试SQL配置文件 - 整合所有测试功能 -->
+<sqls>
+    <!-- 简化版本 - 测试基本WITH语法 -->
+    <sql id="testBasicWith" desc="测试基本WITH语法">
+        WITH params AS (
+            SELECT
+                #{plNos} AS plNos_param,
+                #{equipmentNo} AS equipmentNo_param,
+                #{stopReasonNames} AS stopReasonNames_param,
+                #{startDate} AS startDate_param,
+                #{endDate} AS endDate_param
+            FROM DUAL
+        )
+        SELECT
+            p.plNos_param,
+            p.equipmentNo_param,
+            p.stopReasonNames_param,
+            p.startDate_param,
+            p.endDate_param
+        FROM params p;
+    </sql>
+
+    <!-- 进一步简化 - 测试单表查询 -->
+    <sql id="testSimpleQuery" desc="测试简单查询">
+        SELECT
+            #{plNos} AS plNos_param,
+            #{equipmentNo} AS equipmentNo_param,
+            #{stopReasonNames} AS stopReasonNames_param,
+            #{startDate} AS startDate_param,
+            #{endDate} AS endDate_param
+        FROM DUAL;
+    </sql>
+
+    <!-- 基础查询列表 - 保留分号测试智能处理 -->
+    <sql id="queryCjsbgzmsList" desc="基础查询列表测试">
+        SELECT
+            'Simulated Reason' AS bkReasonName,
+            120 AS totalBreakTime,
+            '10.50%' AS totalBreakTimeRate
+        FROM DUAL
+        WHERE
+            #{plNos} IS NOT NULL AND
+            #{equipmentNo} IS NOT NULL AND
+            #{stopReasonNames} IS NOT NULL AND
+            #{startDate} IS NOT NULL AND
+            #{endDate} IS NOT NULL
+    </sql>
+</sqls>

@@ -1,0 +1,40 @@
+### 1. 注册新用户
+POST http://localhost:8081/api/users/register
+Content-Type: application/json
+
+{
+  "username": "tech_guru",
+  "email": "guru@example.com"
+}
+
+### 2. 获取用户列表
+GET http://localhost:8081/api/users/list
+
+### 3. 发布新文章
+POST http://localhost:8081/api/posts/publish
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "title": "Deep Dive into Java 21",
+  "content": "Java 21 introduces virtual threads..."
+}
+
+### 4. 发布另一篇文章
+POST http://localhost:8081/api/posts/publish
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "title": "Why Microservices?",
+  "content": "Microservices architecture allows..."
+}
+
+### 5. 查看文章详情 (增加热度) - 文章 1
+GET http://localhost:8081/api/posts/1
+
+### 6. 查看文章详情 (增加热度) - 文章 2
+GET http://localhost:8081/api/posts/2
+
+### 7. 查看文章热度排行 (Redis ZSet)
+GET http://localhost:8081/api/posts/hot-rank

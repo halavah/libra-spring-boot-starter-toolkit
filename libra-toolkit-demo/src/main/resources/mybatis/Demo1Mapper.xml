@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.Demo1Mapper">
+    <!-- ================================ 基础标签示例 ================================ -->
+
+    <!-- 基础查询 -->
+    <select id="selectUserById" parameterType="long" resultType="map">
+        SELECT *
+        FROM users
+        WHERE id = #{id}
+    </select>
+
+    <!-- 基础插入 -->
+    <insert id="insertUser" parameterType="map">
+        INSERT INTO users (name, age, email, phone, status, create_time)
+        VALUES (#{name}, #{age}, #{email}, #{phone}, #{status}, #{createTime})
+    </insert>
+
+    <!-- 基础更新 -->
+    <update id="updateUser" parameterType="map">
+        UPDATE users
+        SET name  = #{name},
+            age   = #{age},
+            email = #{email}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 基础删除 -->
+    <delete id="deleteUser" parameterType="long">
+        DELETE
+        FROM users
+        WHERE id = #{id}
+    </delete>
+
+    <!-- ================================ 动态SQL标签示例 ================================ -->
+
+    <!-- 01. if标签：条件判断 -->
+    <select id="selectUsersByCondition" parameterType="map" resultType="map">
+        SELECT * FROM users WHERE 1=1
+        <if test="name != null and name != ''">
+            AND name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="age != null">
+            AND age = #{age}
+        </if>
+        <if test="email != null and email != ''">
+            AND email = #{email}
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <!-- 02. where+if标签 -->
+    <select id="selectUsersWithWhere" parameterType="map" resultType="map">
+        SELECT * FROM users
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="age != null">
+                AND age = #{age}
+            </if>
+            <if test="email != null and email != ''">
+                AND email = #{email}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 03. set标签 -->
+    <update id="updateUserSelective" parameterType="map">
+        UPDATE users
+        <set>
+            <if test="name != null and name != ''">
+                name = #{name},
+            </if>
+            <if test="age != null">
+                age = #{age},
+            </if>
+            <if test="email != null and email != ''">
+                email = #{email},
+            </if>
+            <if test="phone != null and phone != ''">
+                phone = #{phone},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 04. choose(when,otherwise) 语句 -->
+    <select id="selectUsersByType" parameterType="map" resultType="map">
+        SELECT * FROM users WHERE 1=1
+        <choose>
+            <when test="searchType == 'name' and searchValue != null">
+                AND name LIKE CONCAT('%', #{searchValue}, '%')
+            </when>
+            <when test="searchType == 'email' and searchValue != null">
+                AND email = #{searchValue}
+            </when>
+            <when test="searchType == 'phone' and searchValue != null">
+                AND phone = #{searchValue}
+            </when>
+            <otherwise>
+                AND status = 'active'
+            </otherwise>
+        </choose>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 05. trim标签 -->
+    <select id="selectUsersWithTrim" parameterType="map" resultType="map">
+        SELECT * FROM users
+        <trim prefix="WHERE" prefixOverrides="AND |OR ">
+            <if test="name != null and name != ''">
+                AND name = #{name}
+            </if>
+            <if test="age != null">
+                OR age = #{age}
+            </if>
+            <if test="email != null and email != ''">
+                AND email = #{email}
+            </if>
+        </trim>
+    </select>
+
+    <!-- 06. foreach标签 - 批量查询 -->
+    <select id="selectUsersByIds" parameterType="map" resultType="map">
+        SELECT * FROM users WHERE id IN
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+    </select>
+
+    <!-- foreach标签 - 批量插入 -->
+    <insert id="batchInsertUsers" parameterType="map">
+        INSERT INTO users (name, age, email, phone, status, create_time)
+        VALUES
+        <foreach collection="users" item="user" separator=",">
+            (#{user.name}, #{user.age}, #{user.email}, #{user.phone}, #{user.status}, #{user.createTime})
+        </foreach>
+    </insert>
+
+    <!-- foreach标签 - 批量更新 -->
+    <update id="batchUpdateUsers" parameterType="map">
+        <foreach collection="users" item="user" separator=";">
+            UPDATE users SET name = #{user.name}, age = #{user.age} WHERE id = #{user.id}
+        </foreach>
+    </update>
+
+    <!-- foreach标签 - 复杂条件 -->
+    <select id="selectUsersByComplexCondition" parameterType="map" resultType="map">
+        SELECT * FROM users WHERE 1=1
+        <if test="names != null and names.size() > 0">
+            AND name IN
+            <foreach collection="names" item="name" open="(" close=")" separator=",">
+                #{name}
+            </foreach>
+        </if>
+        <if test="ageRange != null and ageRange.size() > 0">
+            AND (
+            <foreach collection="ageRange" item="age" separator=" OR ">
+                age = #{age}
+            </foreach>
+            )
+        </if>
+    </select>
+
+    <!-- ================================ 高级映射示例 ================================ -->
+
+    <!-- 使用resultMap -->
+    <select id="selectUsersWithResultMap" parameterType="map" resultType="map">
+        SELECT *
+        FROM users
+        WHERE status = 'active'
+    </select>
+
+    <!-- 关联查询 -->
+    <select id="selectUsersWithRoles" parameterType="map" resultType="map">
+        SELECT u.id    as user_id,
+               u.name  as user_name,
+               u.email as user_email,
+               r.id    as role_id,
+               r.name  as role_name,
+               r.code  as role_code
+        FROM users u
+                 LEFT JOIN user_roles ur ON u.id = ur.user_id
+                 LEFT JOIN roles r ON ur.role_id = r.id
+        WHERE u.status = 'active'
+    </select>
+
+    <!-- 07. sql标签 - 可重用SQL片段 -->
+    <sql id="userColumns">
+        id
+        , name, age, email, phone, status, create_time, update_time
+    </sql>
+
+    <sql id="userBaseCondition">
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 08. include标签 - 引用SQL片段 -->
+    <select id="selectUsersWithInclude" parameterType="map" resultType="map">
+        SELECT
+        <include refid="userColumns"/>
+        FROM users
+        <include refid="userBaseCondition"/>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- ================================ 特殊功能示例 ================================ -->
+
+    <!-- bind标签 - 变量绑定 -->
+    <select id="selectUsersWithBind" parameterType="map" resultType="map">
+        <bind name="pattern" value="'%' + name + '%'"/>
+        SELECT * FROM users WHERE name LIKE #{pattern}
+    </select>
+
+    <!-- 特殊字符：CDATA区段 -->
+    <select id="selectUsersWithCDATA" parameterType="map" resultType="map">
+        SELECT * FROM users WHERE 1=1
+        <if test="age != null">
+            <![CDATA[
+            AND age >= #{age} AND age &lt;= 100
+            ]]>
+        </if>
+    </select>
+
+    <!-- 特殊字符：XML实体 -->
+    <select id="selectUsersWithXmlEntity" parameterType="map" resultType="map">
+        SELECT * FROM users WHERE 1=1
+        <if test="age != null">
+            AND age &gt;= #{age} AND age &lt;= 100
+        </if>
+    </select>
+
+    <!-- ================================ 实用场景示例 ================================ -->
+
+    <!-- 动态表关联 -->
+    <select id="selectUsersWithDynamicJoin" parameterType="map" resultType="map">
+        SELECT u.*, d.department_name
+        FROM users u
+        <if test="includeDepartment != null and includeDepartment == true">
+            LEFT JOIN departments d ON u.department_id = d.id
+        </if>
+        <where>
+            <if test="name != null and name != ''">
+                AND u.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="departmentId != null">
+                AND u.department_id = #{departmentId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 批量操作优化 - 分页查询 -->
+    <select id="selectUsersWithPagination" parameterType="map" resultType="map">
+        SELECT
+        <include refid="userColumns"/>
+        FROM users
+        <include refid="userBaseCondition"/>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 批量操作优化 - 统计查询 -->
+    <select id="countUsers" parameterType="map" resultType="long">
+        SELECT COUNT(*) FROM users
+        <include refid="userBaseCondition"/>
+    </select>
+
+    <!-- 复杂动态SQL - 多条件组合 -->
+    <select id="selectUsersComplex" parameterType="map" resultType="map">
+        SELECT * FROM users
+        <where>
+            <if test="searchCriteria != null">
+                <choose>
+                    <when test="searchCriteria.type == 'name'">
+                        AND name LIKE CONCAT('%', #{searchCriteria.value}, '%')
+                    </when>
+                    <when test="searchCriteria.type == 'email'">
+                        AND email = #{searchCriteria.value}
+                    </when>
+                    <otherwise>
+                        AND status = 'active'
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="roles != null and roles.size() > 0">
+                AND id IN (
+                SELECT user_id FROM user_roles WHERE role_id IN
+                <foreach collection="roles" item="role" open="(" close=")" separator=",">
+                    #{role}
+                </foreach>
+                )
+            </if>
+            <if test="dateRange != null">
+                <if test="dateRange.startDate != null">
+                    AND create_time >= #{dateRange.startDate}
+                </if>
+                <if test="dateRange.endDate != null">
+                    AND create_time &lt;= #{dateRange.endDate}
+                </if>
+            </if>
+        </where>
+        ORDER BY
+        <choose>
+            <when test="orderBy == 'name'">
+                name ASC
+            </when>
+            <when test="orderBy == 'age'">
+                age DESC
+            </when>
+            <otherwise>
+                create_time DESC
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 动态字段查询 -->
+    <select id="selectUsersWithDynamicFields" parameterType="map" resultType="map">
+        SELECT
+        <choose>
+            <when test="fields != null and fields.size() > 0">
+                <foreach collection="fields" item="field" separator=",">
+                    ${field}
+                </foreach>
+            </when>
+            <otherwise>
+                *
+            </otherwise>
+        </choose>
+        FROM users
+        <include refid="userBaseCondition"/>
+    </select>
+
+    <!-- 动态排序 -->
+    <select id="selectUsersWithDynamicOrder" parameterType="map" resultType="map">
+        SELECT * FROM users
+        <include refid="userBaseCondition"/>
+        <if test="orderFields != null and orderFields.size() > 0">
+            ORDER BY
+            <foreach collection="orderFields" item="orderField" separator=",">
+                ${orderField.field} ${orderField.direction}
+            </foreach>
+        </if>
+    </select>
+</mapper>

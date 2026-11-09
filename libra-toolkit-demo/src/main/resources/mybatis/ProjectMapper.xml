@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.myslayers.libra.framework.toolkit.demo.mapper.ProjectMapper">
+    <!-- 项目基础信息查询 -->
+    <select id="selectProjectById" parameterType="java.lang.Long" resultType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Project">
+        SELECT p.project_id    as id,
+               p.project_name  as name,
+               p.description,
+               p.start_date    as startDate,
+               p.end_date      as endDate,
+               p.budget,
+               p.status,
+               p.manager_id    as managerId,
+               p.department_id as departmentId,
+               p.created_time  as createdTime,
+               p.updated_time  as updatedTime
+        FROM project p
+        WHERE p.project_id = #{projectId}
+    </select>
+
+    <!-- 项目列表查询（支持条件过滤） -->
+    <select id="selectProjectList" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.dto.ProjectAssignDTO" resultType="cn.myslayers.libra.framework.toolkit.demo.model.vo.ProjectProgressVO">
+        SELECT
+        p.project_id as id,
+        p.project_name as name,
+        p.description,
+        p.start_date as startDate,
+        p.end_date as endDate,
+        p.budget,
+        p.status,
+        p.manager_id as managerId,
+        e.name as managerName,
+        d.department_name as departmentName,
+        p.created_time as createdTime
+        FROM project p
+        LEFT JOIN employee e ON p.manager_id = e.employee_id
+        LEFT JOIN department d ON p.department_id = d.department_id
+        <where>
+            <if test="projectName != null and projectName != ''">
+                AND p.project_name LIKE CONCAT('%', #{projectName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND p.status = #{status}
+            </if>
+            <if test="managerId != null">
+                AND p.manager_id = #{managerId}
+            </if>
+            <if test="departmentId != null">
+                AND p.department_id = #{departmentId}
+            </if>
+            <if test="startDate != null">
+                AND p.start_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND p.end_date &lt;= #{endDate}
+            </if>
+            <if test="budgetMin != null">
+                AND p.budget >= #{budgetMin}
+            </if>
+            <if test="budgetMax != null">
+                AND p.budget &lt;= #{budgetMax}
+            </if>
+        </where>
+        ORDER BY p.created_time DESC
+    </select>
+
+    <!-- 创建项目 -->
+    <insert id="insertProject" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Project" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO project (project_name,
+                             description,
+                             start_date,
+                             end_date,
+                             budget,
+                             status,
+                             manager_id,
+                             department_id,
+                             created_time,
+                             updated_time)
+        VALUES (#{name},
+                #{description},
+                #{startDate},
+                #{endDate},
+                #{budget},
+                COALESCE(#{status}, 'PLANNING'),
+                #{managerId},
+                #{departmentId},
+                NOW(),
+                NOW())
+    </insert>
+
+    <!-- 更新项目信息 -->
+    <update id="updateProject" parameterType="cn.myslayers.libra.framework.toolkit.demo.model.entity.Project">
+        UPDATE project
+        <set>
+            <if test="name != null and name != ''">
+                project_name = #{name},
+            </if>
+            <if test="description != null">
+                description = #{description},
+            </if>
+            <if test="startDate != null">
+                start_date = #{startDate},
+            </if>
+            <if test="endDate != null">
+                end_date = #{endDate},
+            </if>
+            <if test="budget != null">
+                budget = #{budget},
+            </if>
+            <if test="status != null and status != ''">
+                status = #{status},
+            </if>
+            <if test="managerId != null">
+                manager_id = #{managerId},
+            </if>
+            <if test="departmentId != null">
+                department_id = #{departmentId},
+            </if>
+            updated_time = NOW()
+        </set>
+        WHERE project_id = #{id}
+    </update>
+
+    <!-- 删除项目 -->
+    <delete id="deleteProject" parameterType="java.lang.Long">
+        DELETE
+        FROM project
+        WHERE project_id = #{projectId}
+    </delete>
+
+    <!-- 批量删除项目 -->
+    <delete id="deleteProjectsByIds">
+        DELETE FROM project WHERE project_id IN
+        <foreach item="id" collection="projectIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 按部门查询项目 -->
+    <select id="selectProjectsByDepartment" resultType="map">
+        SELECT p.project_id,
+               p.project_name,
+               p.status,
+               p.budget,
+               p.start_date,
+               p.end_date,
+               e.name as manager_name
+        FROM project p
+                 LEFT JOIN employee e ON p.manager_id = e.employee_id
+        WHERE p.department_id = #{departmentId}
+        ORDER BY p.start_date DESC
+    </select>
+
+    <!-- 按状态批量更新项目 -->
+    <update id="batchUpdateProjectStatus">
+        UPDATE project
+        SET status = #{newStatus}, updated_time = NOW()
+        WHERE project_id IN
+        <foreach item="id" collection="projectIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 项目成员查询 -->
+    <select id="selectProjectMembers" resultType="map">
+        SELECT e.employee_id,
+               e.name,
+               e.email,
+               d.department_name,
+               e.position,
+               pe.role as project_role,
+               pe.join_date,
+               pe.contribution_rate
+        FROM project_employee pe
+                 JOIN employee e ON pe.employee_id = e.employee_id
+                 JOIN department d ON e.department_id = d.department_id
+        WHERE pe.project_id = #{projectId}
+        ORDER BY pe.join_date ASC
+    </select>
+
+    <!-- 添加项目成员 -->
+    <insert id="addProjectMember">
+        INSERT INTO project_employee (project_id,
+                                      employee_id,
+                                      role,
+                                      join_date,
+                                      contribution_rate)
+        VALUES (#{projectId},
+                #{employeeId},
+                #{role},
+                #{joinDate},
+                #{contributionRate})
+    </insert>
+
+    <!-- 批量添加项目成员 -->
+    <insert id="batchAddProjectMembers">
+        INSERT INTO project_employee (project_id, employee_id, role, join_date, contribution_rate)
+        VALUES
+        <foreach item="member" collection="members" separator=",">
+            (
+            #{projectId},
+            #{member.employeeId},
+            #{member.role},
+            #{member.joinDate},
+            #{member.contributionRate}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 移除项目成员 -->
+    <delete id="removeProjectMember">
+        DELETE
+        FROM project_employee
+        WHERE project_id = #{projectId}
+          AND employee_id = #{employeeId}
+    </delete>
+
+    <!-- 项目统计信息 -->
+    <select id="getProjectStatistics" resultType="map">
+        SELECT
+        COUNT(*) as total_projects,
+        COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as active_projects,
+        COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed_projects,
+        COUNT(CASE WHEN status = 'SUSPENDED' THEN 1 END) as suspended_projects,
+        SUM(budget) as total_budget,
+        AVG(budget) as avg_budget,
+        MAX(budget) as max_budget,
+        MIN(budget) as min_budget
+        FROM project
+        <where>
+            <if test="departmentId != null">
+                AND department_id = #{departmentId}
+            </if>
+            <if test="startDate != null">
+                AND start_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND end_date &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 项目预算分析 -->
+    <select id="selectProjectBudgetAnalysis" resultType="map">
+        SELECT
+        d.department_name,
+        COUNT(p.project_id) as project_count,
+        SUM(p.budget) as total_budget,
+        AVG(p.budget) as avg_budget,
+        COUNT(CASE WHEN p.status = 'ACTIVE' THEN 1 END) as active_count,
+        COUNT(CASE WHEN p.status = 'COMPLETED' THEN 1 END) as completed_count
+        FROM project p
+        JOIN department d ON p.department_id = d.department_id
+        <where>
+            <if test="year != null">
+                AND YEAR(p.start_date) = #{year}
+            </if>
+            <if test="quarter != null">
+                AND QUARTER(p.start_date) = #{quarter}
+            </if>
+        </where>
+        GROUP BY d.department_id, d.department_name
+        ORDER BY total_budget DESC
+    </select>
+
+    <!-- 项目时间线查询 -->
+    <select id="selectProjectTimeline" resultType="map">
+        SELECT
+        p.project_id,
+        p.project_name,
+        p.start_date,
+        p.end_date,
+        p.status,
+        p.budget,
+        e.name as manager_name,
+        d.department_name,
+        DATEDIFF(p.end_date, p.start_date) as duration_days,
+        CASE
+        WHEN p.end_date &lt; CURDATE() AND p.status != 'COMPLETED' THEN 'OVERDUE'
+        WHEN p.start_date > CURDATE() THEN 'UPCOMING'
+        WHEN p.start_date &lt;= CURDATE() AND p.end_date >= CURDATE() THEN 'ONGOING'
+        ELSE p.status
+        END as timeline_status
+        FROM project p
+        LEFT JOIN employee e ON p.manager_id = e.employee_id
+        LEFT JOIN department d ON p.department_id = d.department_id
+        <where>
+            <if test="timelineStatus != null and timelineStatus != ''">
+                <choose>
+                    <when test="timelineStatus == 'OVERDUE'">
+                        AND p.end_date &lt; CURDATE() AND p.status != 'COMPLETED'
+                    </when>
+                    <when test="timelineStatus == 'UPCOMING'">
+                        AND p.start_date > CURDATE()
+                    </when>
+                    <when test="timelineStatus == 'ONGOING'">
+                        AND p.start_date &lt;= CURDATE() AND p.end_date >= CURDATE()
+                    </when>
+                </choose>
+            </if>
+            <if test="departmentIds != null and departmentIds.size() > 0">
+                AND p.department_id IN
+                <foreach item="deptId" collection="departmentIds" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY p.start_date ASC
+    </select>
+
+    <!-- 项目里程碑查询 -->
+    <select id="selectProjectMilestones" resultType="map">
+        SELECT
+        pm.milestone_id,
+        pm.milestone_name,
+        pm.description,
+        pm.target_date,
+        pm.completion_date,
+        pm.status,
+        pm.priority,
+        p.project_name
+        FROM project_milestone pm
+        JOIN project p ON pm.project_id = p.project_id
+        <where>
+            <if test="projectId != null">
+                AND pm.project_id = #{projectId}
+            </if>
+            <if test="status != null and status != ''">
+                AND pm.status = #{status}
+            </if>
+            <if test="priority != null and priority != ''">
+                AND pm.priority = #{priority}
+            </if>
+            <if test="startDate != null">
+                AND pm.target_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND pm.target_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY pm.target_date ASC
+    </select>
+
+    <!-- 复杂联合查询：项目详细报告 -->
+    <select id="selectProjectDetailReport" resultType="map">
+        SELECT p.project_id,
+               p.project_name,
+               p.description,
+               p.start_date,
+               p.end_date,
+               p.budget,
+               p.status,
+               d.department_name,
+               e.name                                                as manager_name,
+               e.email                                               as manager_email,
+               COUNT(DISTINCT pe.employee_id)                        as team_size,
+               COUNT(DISTINCT pm.milestone_id)                       as milestone_count,
+               COUNT(CASE WHEN pm.status = 'COMPLETED' THEN 1 END)   as completed_milestones,
+               ROUND(AVG(pe.contribution_rate), 2)                   as avg_contribution_rate,
+               DATEDIFF(IFNULL(p.end_date, CURDATE()), p.start_date) as total_duration,
+               CASE
+                   WHEN p.status = 'COMPLETED' THEN 100
+                   WHEN COUNT(DISTINCT pm.milestone_id) = 0 THEN 0
+                   ELSE ROUND((COUNT(CASE WHEN pm.status = 'COMPLETED' THEN 1 END) * 100.0 / COUNT(DISTINCT pm.milestone_id)), 2)
+                   END                                               as completion_percentage
+        FROM project p
+                 LEFT JOIN department d ON p.department_id = d.department_id
+                 LEFT JOIN employee e ON p.manager_id = e.employee_id
+                 LEFT JOIN project_employee pe ON p.project_id = pe.project_id
+                 LEFT JOIN project_milestone pm ON p.project_id = pm.project_id
+        WHERE p.project_id = #{projectId}
+        GROUP BY p.project_id, p.project_name, p.description, p.start_date, p.end_date,
+                 p.budget, p.status, d.department_name, e.name, e.email
+    </select>
+</mapper>
