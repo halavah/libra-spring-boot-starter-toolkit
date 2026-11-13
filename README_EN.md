@@ -1,541 +1,194 @@
+<a id="top"></a>
 <div align="center">
 
 # 🚀 Libra Spring Boot Starter Toolkit
 
-**A Powerful Java Utility Toolkit to Simplify Your Development**
+**Java utilities for exploring SQL access, lightweight HTTP endpoints and Redis integration.**
 
-[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-8+-orange.svg)](https://www.oracle.com/java/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.5.14-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![GitHub release](https://img.shields.io/github/v/release/halavah/libra-spring-boot-starter-toolkit)](https://github.com/halavah/libra-spring-boot-starter-toolkit/releases)
-[![GitHub stars](https://img.shields.io/github/stars/halavah/libra-spring-boot-starter-toolkit?style=social)](https://github.com/halavah/libra-spring-boot-starter-toolkit)
+[![Java](https://img.shields.io/badge/Java-8+-orange)](https://dev.java/)
+[![Spring Boot](https://img.shields.io/badge/integrates-Spring%20Boot-6DB33F)](https://spring.io/projects/spring-boot)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 **English** | [简体中文](README.md)
 
 </div>
 
-> **This README follows the open-source documentation spec**: uniform structure, badges to public resources only.
-
-
----
-
-## 📖 Table of Contents
-
-- [Introduction](#-introduction)
-- [Core Features](#-core-features)
-- [Quick Start](#-quick-start)
-- [Modules](#-modules)
-  - [Database Util](#1-database-util-databaseutil)
-  - [HTTP Server Util](#2-http-server-util-postmanutil)
-  - [Redis Util](#3-redis-util-redissonutil)
-- [Tech Stack](#-tech-stack)
-- [Contributing](#-contributing)
-- [License](#-license)
-- [Contact](#-contact)
+> This README follows the open-source documentation standard: consistent structure and badges, public badge resources only, and release-channel pages for current versions.
 
 ---
 
-## 🎯 Introduction
+## 📖 Contents
 
-**Libra Spring Boot Starter Toolkit** is an efficient and easy-to-use Java utility package designed to simplify common tasks in daily development. Whether you're building enterprise applications or rapid prototypes, this toolkit provides powerful support.
-
-### 💡 What Problems Does It Solve?
-
-- ❌ **Tedious Database Operations**: Manually managing connection pools and writing repetitive JDBC code?
-- ❌ **Complex HTTP Service Setup**: Need Spring Boot just to run a simple REST API?
-- ❌ **Confusing Redis Clients**: Struggling to choose between Lettuce and Redisson?
-
-### ✅ Our Solutions
-
-- ✅ **Unified Database Utilities**: Complete CRUD with one line of code, supporting transactions, pagination, and batch operations
-- ✅ **Lightweight HTTP Server**: Start REST APIs in a single file without Spring Boot
-- ✅ **Dual-Engine Redis Utilities**: Perfect integration of Lettuce + Redisson for both data operations and distributed locks
+- [Quick start](#quick-start)
+- [Installation and source](#installation)
+- [Running screenshots](#screenshots)
+- [Modules and boundaries](#modules)
+- [Structure](#structure)
+- [Verification and limitations](#verification)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+- [Star History](#star-history)
+- [Back to top](#back-to-top)
 
 ---
 
-## ⭐ Core Features
+<a id="quick-start"></a>
+## 🚀 Quick start
 
-### 🔥 Simple & Easy to Use
+Use a JDK and Maven compatible with the module POM. The core targets Java 8; dependencies and exact versions are defined in the POM. The following macOS/Linux example starts `PostmanUtil` without Spring Boot, MySQL or Redis.
+
+From the repository root, compile the core and obtain its classpath:
+
+```sh
+mvn -pl libra-toolkit-core -DskipTests compile dependency:build-classpath \
+  -Dmdep.outputFile=target/readme-classpath.txt
+mkdir -p target/readme-demo
+```
+
+Save the following complete example as `target/LibraReadmeDemo.java`:
 
 ```java
-// Database query in one line
-List<Map<String, Object>> users = DatabaseUtil.selectList("SELECT * FROM users WHERE age > ?", 18);
-
-// Start HTTP server in two lines
-PostmanUtil.setPort(8080);
-PostmanUtil.HttpCore.startServer(UserController.class);
-
-// Redis operations, simple and direct
-RedissonUtil.set("key", "value");
-String value = RedissonUtil.get("key");
-```
-
-### ⚡ High Performance
-
-- 🚀 **HikariCP Connection Pool**: Industry's fastest database connection pool
-- 🚀 **Lettuce Redis Client**: High-performance async client based on Netty
-- 🚀 **Zero-Dependency HTTP Server**: Based on Java native HttpServer, fast startup
-
-### 🛡️ Production-Ready
-
-- ✅ Comprehensive exception handling
-- ✅ Thread-safe design
-- ✅ Detailed logging
-- ✅ Extensive unit tests
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Java 8** or higher
-- **Maven 3.6+** or **Gradle 6.0+**
-
-### 1. Add Dependency
-
-#### Maven
-
-Add repository configuration to your `pom.xml`:
-
-```xml
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/halavah/libra-spring-boot-starter-toolkit</url>
-    </repository>
-</repositories>
-```
-
-Configure GitHub authentication in `~/.m2/settings.xml` (GitHub Packages requires authentication for downloading):
-
-```xml
-<servers>
-    <server>
-        <id>github</id>
-        <username>YourGitHubUsername</username>
-        <password>YourGitHubToken</password>
-    </server>
-</servers>
-```
-
-> **Tip**: How to create a GitHub Token?
-> 1. Visit [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
-> 2. Click **Generate new token (classic)**
-> 3. Check `read:packages` permission
-> 4. Generate and copy the token
-
-Add dependency:
-
-```xml
-<dependency>
-    <groupId>cn.myslayers</groupId>
-    <artifactId>libra-toolkit-core</artifactId>
-    <version>X.X.X</version>
-</dependency>
-```
-
-#### Gradle
-
-```gradle
-repositories {
-    maven {
-        url = uri("https://maven.pkg.github.com/halavah/libra-spring-boot-starter-toolkit")
-        credentials {
-            username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
-            password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
-        }
-    }
-}
-
-dependencies {
-    implementation 'cn.myslayers:libra-toolkit-core:X.X.X'
-}
-```
-
-### 2. Quick Demo
-
-Create a simple database query example:
-
-```java
-import cn.myslayers.libra.framework.toolkit.database.DatabaseUtil;
-import java.util.List;
-import java.util.Map;
-
-public class QuickStart {
-    public static void main(String[] args) {
-        // Register datasource
-        DatabaseUtil.registerDatabase("mydb",
-            new DatabaseUtil.DatabaseConfig(
-                "jdbc:mysql://localhost:3306/test",
-                "root",
-                "password",
-                "com.mysql.cj.jdbc.Driver"
-            )
-        );
-        DatabaseUtil.setDefaultDatabase("mydb");
-
-        // Query data
-        List<Map<String, Object>> users = DatabaseUtil.selectList(
-            "SELECT * FROM users WHERE age > ?", 18
-        );
-
-        // Print results
-        users.forEach(System.out::println);
-    }
-}
-```
-
----
-
-## 📦 Modules
-
-### 1. Database Util (DatabaseUtil)
-
-> 💾 **Say Goodbye to Tedious JDBC Code, One Line Does It All**
-
-#### 🌟 Core Features
-
-- ✅ **Multi-Datasource Management**: Support connecting to multiple databases simultaneously
-- ✅ **HikariCP Connection Pool**: Excellent performance, simple configuration
-- ✅ **Simplified CRUD Operations**: `selectList()`, `insert()`, `update()`, `delete()`
-- ✅ **Transaction Management**: Declarative transactions with automatic rollback
-- ✅ **Batch Operations**: Efficient batch insert, update, and delete
-- ✅ **Physical Pagination**: Support for MySQL, PostgreSQL, Oracle, etc.
-- ✅ **Dynamic SQL**: Support MyBatis-style XML SQL
-- ✅ **Object Mapping**: Automatically map query results to Java objects
-
-#### 💡 Use Cases
-
-- ✅ Data access layer for enterprise applications
-- ✅ Data migration scripts
-- ✅ Batch data processing
-- ✅ Rapid prototyping
-
-#### 📚 Quick Examples
-
-**Basic Queries**
-
-```java
-// Query list
-List<Map<String, Object>> users = DatabaseUtil.selectList(
-    "SELECT * FROM users WHERE age > ?", 18
-);
-
-// Query single record
-Map<String, Object>> user = DatabaseUtil.selectOne(
-    "SELECT * FROM users WHERE id = ?", 1
-);
-
-// Query count
-Long count = DatabaseUtil.selectCount(
-    "SELECT COUNT(*) FROM users WHERE status = ?", "active"
-);
-```
-
-**Insert, Update, Delete**
-
-```java
-// Insert
-int rows = DatabaseUtil.insert(
-    "INSERT INTO users (name, age, email) VALUES (?, ?, ?)",
-    "Alice", 25, "alice@example.com"
-);
-
-// Update
-int updated = DatabaseUtil.update(
-    "UPDATE users SET email = ? WHERE id = ?",
-    "newemail@example.com", 1
-);
-
-// Delete
-int deleted = DatabaseUtil.delete(
-    "DELETE FROM users WHERE id = ?", 1
-);
-```
-
-**Transaction Management**
-
-```java
-// Declarative transaction
-Boolean success = DatabaseUtil.executeInTransaction(connection -> {
-    // All operations in the same transaction
-    DatabaseUtil.insert("INSERT INTO users (name, age) VALUES (?, ?)", "Bob", 30);
-    DatabaseUtil.update("UPDATE accounts SET balance = balance - 100 WHERE user_id = ?", 1);
-    return true; // Return true to commit, false or throw exception to rollback
-});
-```
-
-> 📖 **More Examples**: See [Database Util Complete Documentation](docs/database/README.md)
-
----
-
-### 2. HTTP Server Util (PostmanUtil)
-
-> 🌐 **Start REST APIs in a Single File Without Spring Boot**
-
-#### 🌟 Core Features
-
-- ✅ **Annotation-Driven Routing**: `@PostmanController`, `@PostmanMapping`
-- ✅ **Auto Package Scanning**: No manual controller registration needed
-- ✅ **Unified Response Format**: `Result<T>` encapsulates response data
-- ✅ **Request Parameter Parsing**: Auto-parse Query, Path, and Body parameters
-- ✅ **Authentication Mechanisms**: Support Bearer Token, HMAC Signature
-- ✅ **Request Logging**: Auto-log request info and curl commands
-- ✅ **BaseController**: Elegant access to request context
-
-#### 💡 Use Cases
-
-- ✅ Rapid prototyping
-- ✅ Single-file microservices
-- ✅ Standalone tool services
-- ✅ Quick verification in test environments
-- ⚠️ **Not Recommended**: Large production applications (use Spring Boot instead)
-
-#### 📚 Quick Examples
-
-**Simple REST API**
-
-```java
+import cn.myslayers.libra.framework.toolkit.http.PostmanUtil;
 import cn.myslayers.libra.framework.toolkit.http.PostmanUtil.*;
+import java.util.*;
 
-// 1. Define controller
-@PostmanController("/api")
-public class UserController extends BaseController {
-
-    @PostmanMapping(value = "/users", method = RequestMethod.GET)
-    public Result<List<User>> getUsers() {
-        String age = getParam("age");
-        List<User> users = userService.findByAge(Integer.parseInt(age));
-        return Result.ok(users);
+@PostmanController("/shop")
+public class LibraReadmeDemo {
+    @PostmanMapping(value = "/products", method = RequestMethod.GET)
+    public Result<Object> products() {
+        Map<String, Object> product = new LinkedHashMap<>();
+        product.put("sku", "DEMO-SKU-001");
+        product.put("name", "Demo notebook");
+        product.put("price", 29.90);
+        product.put("stock", 120);
+        return Result.ok(Collections.singletonList(product));
     }
-
-    @PostmanMapping(value = "/users", method = RequestMethod.POST)
-    public Result<User> createUser() {
-        UserDTO dto = getBody(UserDTO.class);
-        User user = userService.create(dto);
-        return Result.ok(user);
+    @PostmanMapping(value = "/orders", method = RequestMethod.POST)
+    public Result<Object> orders() {
+        Map<String, Object> order = new LinkedHashMap<>();
+        order.put("orderNo", "DEMO-ORDER-001");
+        order.put("status", "CREATED");
+        return Result.ok(order);
     }
-}
-
-// 2. Start server
-public class Application {
-    public static void main(String[] args) {
-        PostmanUtil.setPort(8080);
-        PostmanUtil.HttpCore.startServer(UserController.class);
-        System.out.println("Server started at http://localhost:8080");
+    public static void main(String[] args) throws Exception {
+        int port = args.length == 0 ? 18776 : Integer.parseInt(args[0]);
+        try (java.net.ServerSocket probe = new java.net.ServerSocket(port)) { }
+        PostmanUtil.setPort(port);
+        PostmanUtil.HttpCore.startServer(LibraReadmeDemo.class);
+        Runtime.getRuntime().addShutdownHook(new Thread(PostmanUtil.HttpCore::stopServer));
+        Thread.currentThread().join();
     }
-}
-```
-
-> 📖 **More Examples**: See [HTTP Server Complete Documentation](docs/http/README.md)
-
----
-
-### 3. Redis Util (RedissonUtil)
-
-> 🔴 **Dual-Engine Redis Utility, Perfect Integration of Lettuce + Redisson**
-
-#### 🌟 Core Features
-
-- ✅ **Lettuce Engine**: For data operations (String, Hash, List, Set, ZSet)
-- ✅ **Redisson Engine**: For distributed locks and objects
-- ✅ **Unified API Design**: One interface, two engines
-- ✅ **Connection Pool Management**: Auto-manage connection pools
-- ✅ **Multi-Mode Support**: Standalone, Cluster, Sentinel
-- ✅ **Batch Operations**: Pipeline batch execution
-- ✅ **Pub/Sub**: Message notification
-- ✅ **Distributed Locks**: Fair locks, read-write locks, RedLock
-- ✅ **Distributed Collections**: Map, Set, List, Queue
-
-#### 💡 Use Cases
-
-- ✅ Cache management
-- ✅ Distributed locks
-- ✅ Distributed counters
-- ✅ Rate limiters
-- ✅ Session storage
-- ✅ Message queues
-
-#### 📚 Quick Examples
-
-**Basic String Operations**
-
-```java
-import cn.myslayers.libra.framework.toolkit.redis.RedissonUtil;
-
-// Initialize connection
-RedissonUtil.init("redis://localhost:6379");
-
-// String operations
-RedissonUtil.set("user:1:name", "Alice");
-RedissonUtil.setex("session:abc", 3600, "session-data");  // With expiration
-
-String name = RedissonUtil.get("user:1:name");
-
-// Numeric operations
-RedissonUtil.incr("page:views");
-RedissonUtil.incrBy("score", 10);
-
-// Delete
-RedissonUtil.del("user:1:name");
-```
-
-**Distributed Lock**
-
-```java
-import org.redisson.api.RLock;
-
-// Get lock
-RLock lock = RedissonUtil.getLock("order:lock:12345");
-
-try {
-    // Try to acquire lock, wait up to 10 seconds, auto-release after 30 seconds
-    if (lock.tryLock(10, 30, TimeUnit.SECONDS)) {
-        try {
-            // Business logic
-            System.out.println("Processing order...");
-        } finally {
-            lock.unlock();  // Release lock
-        }
-    }
-} catch (Exception e) {
-    e.printStackTrace();
 }
 ```
 
-> 📖 **More Examples**: See [Redis Util Complete Documentation](docs/redis/README.md)
+Compile and run, then request it from another terminal:
 
----
+```sh
+CP="libra-toolkit-core/target/classes:$(cat libra-toolkit-core/target/readme-classpath.txt)"
+javac -encoding UTF-8 -cp "$CP" -d target/readme-demo target/LibraReadmeDemo.java
+java -cp "target/readme-demo:$CP" LibraReadmeDemo
+```
 
-## 🛠️ Tech Stack
+```sh
+curl http://127.0.0.1:18776/shop/products
+curl -X POST http://127.0.0.1:18776/shop/orders -H 'Content-Type: application/json' -d '{}'
+```
+Expected: JSON with `success: true`, `code: 200`, a demonstration product or `DEMO-ORDER-001`. Windows uses `;` rather than `:` in Java classpaths and requires equivalent PowerShell commands. Stop the example with Ctrl+C.
 
-| Component | Technology | Version | Description |
-|-----------|------------|---------|-------------|
-| **Core Framework** | Spring Boot | 2.5.14 | Dependency management |
-| **Java** | JDK | 8+ | Runtime environment |
-| **Connection Pool** | HikariCP | 4.0.3 | High-performance pool |
-| **Database Driver** | MySQL Connector | 8.0.28 | MySQL driver |
-| **SQL Parser** | JSqlParser | 4.2 | SQL parser |
-| **Redis Client** | Lettuce | 6.1.8 | Async Redis client |
-| **Redis Framework** | Redisson | 3.17.7 | Distributed locks/objects |
-| **JSON Processing** | Jackson | 2.12.7 | JSON serialization |
-| **Utility Library** | Hutool | 5.7.22 | Java utilities |
-| **Code Simplification** | Lombok | 1.18.24 | Annotation processor |
+Use an unused port. The sample probes the port before calling the toolkit because the built-in launcher attempts to close an existing port owner. The demo has no authentication and uses a tiny in-memory response; it is for local exploration, not public hosting or durable order processing.
 
----
+<a id="installation"></a>
+## 📦 Installation and source
 
+Source code: [GitHub](https://github.com/halavah/libra-spring-boot-starter-toolkit) · [Gitee](https://gitee.com/halavah/libra-spring-boot-starter-toolkit), public, branch `master`.
+
+Documentation: this README and source examples under `libra-toolkit-demo/`; additional materials live in `libra-toolkit-docs/`.
+
+```sh
+git clone https://github.com/halavah/libra-spring-boot-starter-toolkit.git
+cd libra-spring-boot-starter-toolkit
+mvn -pl libra-toolkit-core -DskipTests install
+```
+
+Source builds install `cn.myslayers:libra-toolkit-core` into your local Maven repository. Select the version from [the module POM](libra-toolkit-core/pom.xml) or [Releases](https://github.com/halavah/libra-spring-boot-starter-toolkit/releases); this README does not assume Maven Central availability or pin an artifact filename. `start.sh` and `start.ps1` are publishing launchers, not development-server commands.
+
+<a id="screenshots"></a>
+## 🖼️ Running screenshots
+
+The product response was captured from a real `PostmanUtil` endpoint using the complete example above. The order image displays the actual POST response captured from the same demo. Values are synthetic; no external database is involved.
+
+![Product endpoint response](assets/screenshots/http-products.png)
+
+![Order endpoint response](assets/screenshots/http-order.png)
+
+<a id="modules"></a>
+## 🧩 Modules and boundaries
+
+| Area | Entry | Boundary |
+|---|---|---|
+| SQL/data access | `database/DatabaseUtil*.java` | Supply appropriate data sources; variants have different initialization/configuration behavior |
+| Lightweight HTTP | `http/PostmanUtil.java` | Annotated controllers, registration/scanning, routing, request context and JSON responses |
+| Redis | `redis/RedissonUtil.java` | Requires your own Redis and client configuration |
+| License helpers | `license/` | License generation/validation helpers; not proof of application-wide security |
+
+Read the concrete class API before using a variant. The quick start validates HTTP registration and responses only; it does not validate SQL transactions, Redis locks or performance claims.
+
+<a id="structure"></a>
+## 🗂️ Structure
+
+```text
+pom.xml                # Aggregator
+libra-toolkit-core/    # Database, HTTP, Redis and license utilities
+libra-toolkit-demo/    # Spring Boot examples, configuration and tests
+libra-toolkit-docs/    # Additional material
+assets/screenshots/   # README screenshots
+start.sh / start.ps1   # Release launchers
+```
+
+<a id="verification"></a>
+## ✅ Verification and limitations
+
+Local checks compiled the Core module, compiled the complete example with Java 8, and exercised product GET and order POST endpoints. The screenshot service used the same example without external persistence.
+
+Redis integration tests, database integration suites, the full Spring Boot demo and performance/load testing were not run. The demo’s development H2 configuration and its test-scoped driver do not automatically make the packaged Spring Boot application self-contained. Review configuration and dependency scopes before launching it. The standalone HTTP example is the reproducible minimal path documented here.
+
+<a id="contributing"></a>
 ## 🤝 Contributing
 
-We welcome all forms of contributions! Whether reporting bugs, submitting feature requests, or directly contributing code.
+Authorized collaborators create a feature branch from `master`, validate their changes and submit a PR. Public repositories may be forked first. Keep changes focused and state the commands run and any checks omitted.
 
-### How to Contribute?
+Preserve the Java compatibility baseline and public API. Document any change to explicit registration or scanning. Use isolated databases and Redis instances for integration tests; report checks not run. Never exercise destructive database or Redis tests against shared services.
 
-1. **Fork** this repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a **Pull Request**
-
-### Report Issues
-
-If you find a bug or have a feature suggestion:
-
-1. Visit [Issues Page](https://github.com/halavah/libra-spring-boot-starter-toolkit/issues)
-2. Click **New Issue**
-3. Select appropriate template (Bug Report or Feature Request)
-4. Fill in detailed information
-
-### Code Standards
-
-- Use **4 spaces** for indentation
-- Follow **Alibaba Java Coding Guidelines**
-- Add necessary **comments** and **Javadoc**
-- Ensure all **tests pass**
-
----
-
+<a id="license"></a>
 ## 📄 License
 
-This project is licensed under the **AGPL-3.0 License**.
+[GNU AGPL-3.0](LICENSE).
 
-### ⚠️ Important Notice
+- ✅ Allows use, study, modification and commercial use under its terms.
+- ⚠️ Redistribution and modified versions carry corresponding-source and notice obligations. If users interact remotely with a modified version over a network, the applicable AGPL source-offer requirement must be met.
+- No warranty is provided. Consult the full license when integrating or distributing the toolkit.
 
-Under the **AGPL-3.0** license:
+AGPL keeps shared improvements available to users, including relevant network-service use.
 
-- ✅ **Permitted**: Commercial use, modification, distribution, patent use
-- ⚠️ **Required**:
-  - **Source Code Disclosure**: Modified code must be open-sourced
-  - **License Propagation**: Derivative works must use the same license
-  - **Network Service Disclosure**: If using this project for network services (SaaS), you must provide source code to users
-
-### 📖 License Interpretation
-
-AGPL-3.0 is an enhanced version of GPL-3.0, emphasizing **network service** open-source requirements:
-
-> If you modify this project and provide it as a **network service** (such as web applications, API services) to users, you must provide the modified source code to users.
-
-This means:
-
-- ❌ **Not Allowed**: Selling this project as closed-source SaaS after modification
-- ✅ **Allowed**: Using as an internal tool (no need to open-source)
-- ✅ **Allowed**: Using as part of an open-source project
-
-### 💡 Why Choose AGPL-3.0?
-
-We chose AGPL-3.0 to:
-
-1. **Protect Open-Source Spirit**: Ensure all improvements can be contributed back to the community
-2. **Prevent Closed-Source Abuse**: Prevent others from commercializing this project as closed-source
-3. **Encourage Collaboration**: Promote cooperation and sharing among developers
-
-If you have any questions about the license, feel free to contact us through [Issues](https://github.com/halavah/libra-spring-boot-starter-toolkit/issues).
-
-> 📄 **Full License**: See [LICENSE](LICENSE) file
-
----
-
+<a id="contact"></a>
 ## 📮 Contact
 
-### 🙋 Development Team
+Maintainer: [halavah](https://github.com/halavah).
 
-- **Maintainer**: Halavah
-- **GitHub**: [@halavah](https://github.com/halavah)
-- **Email**: halavah@126.com
+- [Issues](https://github.com/halavah/libra-spring-boot-starter-toolkit/issues)
+- [Releases](https://github.com/halavah/libra-spring-boot-starter-toolkit/releases) — use Watch → Custom → Releases to follow releases.
 
-### 🔗 Links
-
-- **Project Home**: [https://github.com/halavah/libra-spring-boot-starter-toolkit](https://github.com/halavah/libra-spring-boot-starter-toolkit)
-- **Issue Tracker**: [Issues](https://github.com/halavah/libra-spring-boot-starter-toolkit/issues)
-- **Discussions**: [Discussions](https://github.com/halavah/libra-spring-boot-starter-toolkit/discussions)
-- **Release Notes**: [Releases](https://github.com/halavah/libra-spring-boot-starter-toolkit/releases)
-
-### 💬 Community Support
-
-If you encounter problems during use:
-
-1. 📖 Check [Documentation](docs/)
-2. 🔍 Search [Closed Issues](https://github.com/halavah/libra-spring-boot-starter-toolkit/issues?q=is%3Aissue+is%3Aclosed)
-3. 💬 Start a discussion in [Discussions](https://github.com/halavah/libra-spring-boot-starter-toolkit/discussions)
-4. 🐛 [Submit a new Issue](https://github.com/halavah/libra-spring-boot-starter-toolkit/issues/new)
-
----
-
+<a id="star-history"></a>
 ## ⭐ Star History
 
-If this project helps you, please give us a ⭐ Star! Your support is our greatest motivation!
+If this project is useful, consider starring it.
 
-[![Star History Chart](https://api.star-history.com/svg?repos=halavah/libra-spring-boot-starter-toolkit&type=Date)](https://star-history.com/#halavah/libra-spring-boot-starter-toolkit&Date)
+[![Star History](https://api.star-history.com/svg?repos=halavah/libra-spring-boot-starter-toolkit&type=Date)](https://star-history.com/#halavah/libra-spring-boot-starter-toolkit&Date)
 
----
+<a id="back-to-top"></a>
+## ⬆ Back to top
 
-<div align="center">
+Made with ❤️. If this project helps you, consider giving it a Star.
 
-**Built with ❤️ | 用 ❤️ 构建**
-
-If this project helped you, please consider giving us a ⭐ Star
-
-[⬆ Back to Top](#-libra-spring-boot-starter-toolkit)
-
-</div>
-
+[⬆ Back to top](#top)
