@@ -20,8 +20,8 @@
 ## 📖 目录
 
 - [快速开始](#quick-start)
-- [安装与源码](#installation)
 - [运行截图](#screenshots)
+- [安装与源码](#installation)
 - [模块与边界](#modules)
 - [目录结构](#structure)
 - [验证与限制](#verification)
@@ -36,7 +36,7 @@
 <a id="quick-start"></a>
 ## 🚀 快速开始
 
-准备与模块 POM 兼容的 JDK 和 Maven；Core 的编译目标为 Java 8，依赖与精确版本以 POM 为准。以下 macOS／Linux 示例直接启动 `PostmanUtil`，不依赖 Spring Boot、MySQL 或 Redis。
+准备 JDK 8 或更新版本、Maven 3.9；Core 的编译目标为 Java 8。HTTP 示例所需的 Jackson JSON、Spring 注解等 Java 依赖由 Maven 自动下载，不需要另行运行 Spring 容器。以下 macOS／Linux 示例直接启动 `PostmanUtil`，不依赖 Spring Boot、MySQL 或 Redis。
 
 在仓库根目录编译 Core 并获取依赖路径：
 
@@ -98,21 +98,6 @@ curl -X POST http://127.0.0.1:18776/shop/orders -H 'Content-Type: application/js
 
 选择空闲端口。工具内置启动器会尝试关闭占用端口的进程，因此示例先探测并拒绝端口冲突。该示例无鉴权，只返回内存演示数据，供本机学习，不用于公网托管或真实订单持久化。
 
-<a id="installation"></a>
-## 📦 安装与源码
-
-源码：[GitHub](https://github.com/halavah/libra-spring-boot-starter-toolkit) · [Gitee](https://gitee.com/halavah/libra-spring-boot-starter-toolkit)，公开仓，主线 `master`。
-
-文档：本篇、`libra-toolkit-demo/` 源码示例；补充资料位于 `libra-toolkit-docs/`。
-
-```sh
-git clone https://github.com/halavah/libra-spring-boot-starter-toolkit.git
-cd libra-spring-boot-starter-toolkit
-mvn -pl libra-toolkit-core -DskipTests install
-```
-
-源码构建将 `cn.myslayers:libra-toolkit-core` 安装到本机 Maven 仓库；版本从 [模块 POM](libra-toolkit-core/pom.xml) 或 [Releases](https://github.com/halavah/libra-spring-boot-starter-toolkit/releases) 选择，不假设 Maven Central 已发布，也不写死附件名。`start.sh`、`start.ps1` 是发布启动器，不是开发服务启动命令。
-
 <a id="screenshots"></a>
 ## 🖼️ 运行截图
 
@@ -121,6 +106,21 @@ mvn -pl libra-toolkit-core -DskipTests install
 ![商品接口响应](assets/screenshots/http-products.png)
 
 ![订单接口响应](assets/screenshots/http-order.png)
+
+<a id="installation"></a>
+## 📦 安装与源码
+
+源码：[GitHub](https://github.com/halavah/libra-spring-boot-starter-toolkit) · [Gitee](https://gitee.com/halavah/libra-spring-boot-starter-toolkit)，公开仓，主线 `master`。
+
+文档：本篇包含完整的独立 HTTP 示例、环境要求、编译命令、请求方式、预期结果和限制；运行该路径不需要其他说明文档或私有工程。
+
+```sh
+git clone https://github.com/halavah/libra-spring-boot-starter-toolkit.git
+cd libra-spring-boot-starter-toolkit
+mvn -pl libra-toolkit-core -DskipTests install
+```
+
+源码构建将 `cn.myslayers:libra-toolkit-core` 安装到本机 Maven 仓库；构建命令自动从源码读取产物版本，无需在上方命令中手填发版号。[Releases](https://github.com/halavah/libra-spring-boot-starter-toolkit/releases) 是发行渠道，不假设 Maven Central 已发布，也不写死附件名。`start.sh`、`start.ps1` 是发布启动器，不是开发服务启动命令。
 
 <a id="modules"></a>
 ## 🧩 模块与边界

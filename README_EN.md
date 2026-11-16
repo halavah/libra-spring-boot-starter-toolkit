@@ -20,8 +20,8 @@
 ## 📖 Contents
 
 - [Quick start](#quick-start)
-- [Installation and source](#installation)
 - [Running screenshots](#screenshots)
+- [Installation and source](#installation)
 - [Modules and boundaries](#modules)
 - [Structure](#structure)
 - [Verification and limitations](#verification)
@@ -36,7 +36,7 @@
 <a id="quick-start"></a>
 ## 🚀 Quick start
 
-Use a JDK and Maven compatible with the module POM. The core targets Java 8; dependencies and exact versions are defined in the POM. The following macOS/Linux example starts `PostmanUtil` without Spring Boot, MySQL or Redis.
+Use JDK 8 or newer and Maven 3.9. The Core module targets Java 8. Maven downloads the HTTP example’s Jackson JSON, Spring annotation and other declared Java dependencies automatically; no separately running Spring container is required. The following macOS/Linux example starts `PostmanUtil` without Spring Boot, MySQL or Redis.
 
 From the repository root, compile the core and obtain its classpath:
 
@@ -98,21 +98,6 @@ Expected: JSON with `success: true`, `code: 200`, a demonstration product or `DE
 
 Use an unused port. The sample probes the port before calling the toolkit because the built-in launcher attempts to close an existing port owner. The demo has no authentication and uses a tiny in-memory response; it is for local exploration, not public hosting or durable order processing.
 
-<a id="installation"></a>
-## 📦 Installation and source
-
-Source code: [GitHub](https://github.com/halavah/libra-spring-boot-starter-toolkit) · [Gitee](https://gitee.com/halavah/libra-spring-boot-starter-toolkit), public, branch `master`.
-
-Documentation: this README and source examples under `libra-toolkit-demo/`; additional materials live in `libra-toolkit-docs/`.
-
-```sh
-git clone https://github.com/halavah/libra-spring-boot-starter-toolkit.git
-cd libra-spring-boot-starter-toolkit
-mvn -pl libra-toolkit-core -DskipTests install
-```
-
-Source builds install `cn.myslayers:libra-toolkit-core` into your local Maven repository. Select the version from [the module POM](libra-toolkit-core/pom.xml) or [Releases](https://github.com/halavah/libra-spring-boot-starter-toolkit/releases); this README does not assume Maven Central availability or pin an artifact filename. `start.sh` and `start.ps1` are publishing launchers, not development-server commands.
-
 <a id="screenshots"></a>
 ## 🖼️ Running screenshots
 
@@ -121,6 +106,21 @@ The product response was captured from a real `PostmanUtil` endpoint using the c
 ![Product endpoint response](assets/screenshots/http-products.png)
 
 ![Order endpoint response](assets/screenshots/http-order.png)
+
+<a id="installation"></a>
+## 📦 Installation and source
+
+Source code: [GitHub](https://github.com/halavah/libra-spring-boot-starter-toolkit) · [Gitee](https://gitee.com/halavah/libra-spring-boot-starter-toolkit), public, branch `master`.
+
+Documentation: this README contains the complete standalone HTTP example, prerequisites, compilation, requests, expected results and limitations. No other guide or private project is required for that path.
+
+```sh
+git clone https://github.com/halavah/libra-spring-boot-starter-toolkit.git
+cd libra-spring-boot-starter-toolkit
+mvn -pl libra-toolkit-core -DskipTests install
+```
+
+Source builds install `cn.myslayers:libra-toolkit-core` into your local Maven repository. The build reads the artifact version from the source automatically, so the commands above require no manually entered release number. [Releases](https://github.com/halavah/libra-spring-boot-starter-toolkit/releases) is the distribution channel; this README does not assume Maven Central availability or pin an artifact filename. `start.sh` and `start.ps1` are publishing launchers, not development-server commands.
 
 <a id="modules"></a>
 ## 🧩 Modules and boundaries
